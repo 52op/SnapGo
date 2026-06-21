@@ -593,12 +593,37 @@ func (e *Executor) deleteOldS3(dc DestConfig, cutoff time.Time) error {
 		return nil
 	}
 
+	// 先试批量删除（快，但部分 S3 兼容存储不支持）
+	var notImplemented bool
+	ch := make(chan minio.ObjectInfo, len(objects))
 	for _, obj := range objects {
-		if err := client.RemoveObject(ctx, bucket, obj.Key, minio.RemoveObjectOptions{}); err != nil {
-			return fmt.Errorf("删除 %s 失败: %w", obj.Key, err)
+		ch <- obj
+	}
+	close(ch)
+	for err := range client.RemoveObjects(ctx, bucket, ch, minio.RemoveObjectsOptions{}) {
+		if err.Err != nil {
+			if isS3NotImplemented(err.Err) {
+				notImplemented = true
+				break
+			}
+			return fmt.Errorf("删除 %s 失败: %w", err.ObjectName, err.Err)
+		}
+	}
+	if notImplemented {
+		for _, obj := range objects {
+			if e := client.RemoveObject(ctx, bucket, obj.Key, minio.RemoveObjectOptions{}); e != nil {
+				return fmt.Errorf("删除 %s 失败: %w", obj.Key, e)
+			}
 		}
 	}
 	return nil
+}
+
+func isS3NotImplemented(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "not implemented") ||
+		strings.Contains(msg, "NotImplemented") ||
+		strings.Contains(msg, "Not Implemented")
 }
 
 func (e *Executor) deleteOldWebDAV(dc DestConfig, cutoff time.Time) error {
