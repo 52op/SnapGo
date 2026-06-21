@@ -129,6 +129,7 @@ func main() {
 	jh := &handlers.JobHandler{DB: db, Executor: exec}
 	sh := &handlers.SourceHandler{DB: db}
 	dh := &handlers.DestinationHandler{DB: db, Executor: exec}
+	ph := &handlers.ProviderHandler{DB: db, Executor: exec}
 	lh := &handlers.LogHandler{DB: db}
 	dash := &handlers.DashboardHandler{DB: db}
 
@@ -147,6 +148,13 @@ func main() {
 	protected.PUT("/destinations/:id", dh.Update)
 	protected.DELETE("/destinations/:id", dh.Delete)
 	protected.POST("/destinations/:id/test", dh.Test)
+
+	protected.GET("/providers", ph.List)
+	protected.GET("/providers/:id", ph.Get)
+	protected.POST("/providers", ph.Create)
+	protected.PUT("/providers/:id", ph.Update)
+	protected.DELETE("/providers/:id", ph.Delete)
+	protected.POST("/providers/test", ph.Test)
 
 	protected.GET("/jobs", jh.List)
 	protected.GET("/jobs/:id", jh.Get)

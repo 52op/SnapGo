@@ -22,7 +22,9 @@ type Source struct {
 	ID         int64     `json:"id" gorm:"primaryKey"`
 	Name       string    `json:"name" gorm:"not null"`
 	SourceType string    `json:"source_type" gorm:"not null"`
-	Path       string    `json:"path" gorm:"not null"`
+	Path       string    `json:"path" gorm:"size:500;not null"`
+	Paths      string    `json:"paths" gorm:"size:2000"`
+	PackMode   string    `json:"pack_mode" gorm:"size:20;default:bundle"`
 	DbVacuum   bool      `json:"db_vacuum" gorm:"default:true"`
 	Compress   bool      `json:"compress" gorm:"default:true"`
 	Enabled    bool      `json:"enabled" gorm:"default:true"`
@@ -32,15 +34,25 @@ type Source struct {
 }
 
 type Destination struct {
-	ID           int64     `json:"id" gorm:"primaryKey"`
-	Name         string    `json:"name" gorm:"not null"`
-	DestType     string    `json:"dest_type" gorm:"not null"`
-	Config       string    `json:"config" gorm:"type:text;not null"`
-	MaxRetention int       `json:"max_retention" gorm:"default:30"`
-	KeepOne      bool      `json:"keep_one" gorm:"default:false"`
-	Enabled      bool      `json:"enabled" gorm:"default:true"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID                int64     `json:"id" gorm:"primaryKey"`
+	Name              string    `json:"name" gorm:"not null"`
+	DestType          string    `json:"dest_type" gorm:"not null"`
+	Config            string    `json:"config" gorm:"type:text;not null"`
+	StorageProviderID *int64    `json:"storage_provider_id" gorm:"default:null"`
+	MaxRetention      int       `json:"max_retention" gorm:"default:30"`
+	KeepOne           bool      `json:"keep_one" gorm:"default:false"`
+	Enabled           bool      `json:"enabled" gorm:"default:true"`
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type StorageProvider struct {
+	ID        int64     `json:"id" gorm:"primaryKey"`
+	Name      string    `json:"name" gorm:"size:200;not null"`
+	DestType  string    `json:"dest_type" gorm:"size:20;not null"`
+	Config    string    `json:"config" gorm:"type:text;not null"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Job struct {
@@ -75,7 +87,7 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := db.AutoMigrate(&User{}, &Source{}, &Destination{}, &Job{}, &JobLog{}); err != nil {
+	if err := db.AutoMigrate(&User{}, &Source{}, &Destination{}, &StorageProvider{}, &Job{}, &JobLog{}); err != nil {
 		return nil, err
 	}
 	return db, nil

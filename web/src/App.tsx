@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Sources from './pages/Sources'
 import Destinations from './pages/Destinations'
+import StorageProviders from './pages/StorageProviders'
 import Jobs from './pages/Jobs'
 import Logs from './pages/Logs'
 import Layout from './components/Layout'
@@ -65,6 +66,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="sources" element={<Sources />} />
         <Route path="destinations" element={<Destinations />} />
+        <Route path="providers" element={<StorageProviders />} />
         <Route path="jobs" element={<Jobs />} />
         <Route path="logs" element={<Logs />} />
       </Route>

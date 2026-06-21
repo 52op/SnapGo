@@ -105,6 +105,30 @@ export function browsePath(path: string) {
   return request(`/browse?path=${encodeURIComponent(path)}`).then(r => r.data)
 }
 
+export function listProviders() {
+  return request('/providers').then(r => r.data)
+}
+
+export function getProvider(id: number) {
+  return request(`/providers/${id}`).then(r => r.data)
+}
+
+export function createProvider(data: any) {
+  return request('/providers', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export function updateProvider(id: number, data: any) {
+  return request(`/providers/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export function deleteProvider(id: number) {
+  return request(`/providers/${id}`, { method: 'DELETE' })
+}
+
+export function testProvider(data: any) {
+  return request('/providers/test', { method: 'POST', body: JSON.stringify(data) })
+}
+
 export function listJobs() {
   return request('/jobs').then(r => r.data)
 }

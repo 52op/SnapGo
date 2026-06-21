@@ -12,6 +12,31 @@ import (
 	"gorm.io/gorm"
 )
 
+func resolveDestConfig(db *gorm.DB, configStr string, providerID *int64) string {
+	if providerID == nil {
+		return configStr
+	}
+	if configStr == "" {
+		configStr = `{"path":""}`
+	}
+	var dc map[string]interface{}
+	json.Unmarshal([]byte(configStr), &dc)
+
+	var row struct {
+		Config string
+	}
+	if err := db.Table("storage_providers").Where("id = ?", *providerID).First(&row).Error; err != nil {
+		return configStr
+	}
+	var pc map[string]interface{}
+	json.Unmarshal([]byte(row.Config), &pc)
+	for k, v := range pc {
+		dc[k] = v
+	}
+	merged, _ := json.Marshal(dc)
+	return string(merged)
+}
+
 type Scheduler struct {
 	cron     *cron.Cron
 	db       *gorm.DB
@@ -37,17 +62,20 @@ type sourceRow struct {
 	Name       string
 	SourceType string
 	Path       string
+	Paths      string
+	PackMode   string
 	DbVacuum   bool
 	Compress   bool
 }
 
 type destRow struct {
-	ID           int64
-	Name         string
-	DestType     string
-	Config       string
-	MaxRetention int
-	KeepOne      bool
+	ID                int64
+	Name              string
+	DestType          string
+	Config            string
+	StorageProviderID *int64
+	MaxRetention      int
+	KeepOne           bool
 }
 
 type logRow struct {
@@ -134,6 +162,8 @@ func (s *Scheduler) runJob(job jobRow) {
 				Name:       r.Name,
 				SourceType: r.SourceType,
 				Path:       r.Path,
+				Paths:      r.Paths,
+				PackMode:   r.PackMode,
 				DbVacuum:   r.DbVacuum,
 				Compress:   r.Compress,
 			})
@@ -145,11 +175,12 @@ func (s *Scheduler) runJob(job jobRow) {
 		var dstRows []destRow
 		s.db.Table("destinations").Where("id IN ? AND enabled = ?", destIDs, true).Find(&dstRows)
 		for _, r := range dstRows {
+			configStr := resolveDestConfig(s.db, r.Config, r.StorageProviderID)
 			dests = append(dests, executor.DestItem{
 				ID:           r.ID,
 				Name:         r.Name,
 				DestType:     r.DestType,
-				Config:       r.Config,
+				Config:       configStr,
 				MaxRetention: r.MaxRetention,
 				KeepOne:      r.KeepOne,
 			})

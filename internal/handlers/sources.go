@@ -17,7 +17,9 @@ type SourceHandler struct {
 type sourceForm struct {
 	Name       string `json:"name" binding:"required"`
 	SourceType string `json:"source_type" binding:"required"`
-	Path       string `json:"path" binding:"required"`
+	Path       string `json:"path"`
+	Paths      string `json:"paths"`
+	PackMode   string `json:"pack_mode"`
 	DbVacuum   bool   `json:"db_vacuum"`
 	Compress   bool   `json:"compress"`
 	Enabled    bool   `json:"enabled"`
@@ -50,6 +52,8 @@ func (h *SourceHandler) Create(c *gin.Context) {
 		"name":        form.Name,
 		"source_type": form.SourceType,
 		"path":        form.Path,
+		"paths":       form.Paths,
+		"pack_mode":   form.PackMode,
 		"db_vacuum":   form.DbVacuum,
 		"compress":    form.Compress,
 		"enabled":     form.Enabled,
@@ -73,6 +77,8 @@ func (h *SourceHandler) Update(c *gin.Context) {
 		"name":        form.Name,
 		"source_type": form.SourceType,
 		"path":        form.Path,
+		"paths":       form.Paths,
+		"pack_mode":   form.PackMode,
 		"db_vacuum":   form.DbVacuum,
 		"compress":    form.Compress,
 		"enabled":     form.Enabled,

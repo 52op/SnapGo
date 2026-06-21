@@ -7,6 +7,7 @@ import {
   ScheduleOutlined,
   FileTextOutlined,
   LogoutOutlined,
+  CloudServerOutlined,
 } from '@ant-design/icons'
 import { setToken, getMe } from '../api'
 import { useEffect, useState } from 'react'
@@ -26,6 +27,7 @@ export default function Layout() {
   const menuItems = [
     { key: '/', icon: <DashboardOutlined />, label: '仪表盘' },
     { key: '/sources', icon: <DatabaseOutlined />, label: '备份源' },
+    { key: '/providers', icon: <CloudServerOutlined />, label: '存储提供商' },
     { key: '/destinations', icon: <CloudUploadOutlined />, label: '备份目标' },
     { key: '/jobs', icon: <ScheduleOutlined />, label: '备份任务' },
     { key: '/logs', icon: <FileTextOutlined />, label: '执行日志' },

@@ -30,8 +30,23 @@ type SourceItem struct {
 	Name       string
 	SourceType string
 	Path       string
+	Paths      string
+	PackMode   string
 	DbVacuum   bool
 	Compress   bool
+}
+
+func (s *SourceItem) GetPaths() []string {
+	if s.Paths != "" {
+		var paths []string
+		if err := json.Unmarshal([]byte(s.Paths), &paths); err == nil && len(paths) > 0 {
+			return paths
+		}
+	}
+	if s.Path != "" {
+		return []string{s.Path}
+	}
+	return nil
 }
 
 type DestItem struct {
@@ -98,49 +113,95 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 	outputBuf.WriteString(fmt.Sprintf("[%s] 开始备份任务: %s\n", time.Now().Format(time.RFC3339), jobName))
 
 	for _, src := range sources {
-		outputBuf.WriteString(fmt.Sprintf("处理备份源: %s (%s)\n", src.Name, src.SourceType))
-		switch src.SourceType {
-		case "sqlite":
-			files, size, err := backupSQLite(src.Path, backupDir, src.DbVacuum)
-			if err != nil {
-				outputBuf.WriteString(fmt.Sprintf("  SQLite 备份失败: %v\n", err))
-				continue
-			}
-			totalFiles += files
-			totalBytes += size
-			outputBuf.WriteString(fmt.Sprintf("  SQLite 备份完成: %d 文件, %d 字节\n", files, size))
-
-		case "file":
-			files, size, err := copyFile(src.Path, backupDir)
-			if err != nil {
-				outputBuf.WriteString(fmt.Sprintf("  文件复制失败: %v\n", err))
-				continue
-			}
-			totalFiles += files
-			totalBytes += size
-			outputBuf.WriteString(fmt.Sprintf("  文件复制完成: %d 文件, %d 字节\n", files, size))
-
-		case "directory", "glob":
-			files, size, err := copyGlob(src.Path, backupDir)
-			if err != nil {
-				outputBuf.WriteString(fmt.Sprintf("  文件匹配失败: %v\n", err))
-				continue
-			}
-			totalFiles += files
-			totalBytes += size
-			outputBuf.WriteString(fmt.Sprintf("  文件匹配完成: %d 文件, %d 字节\n", files, size))
+		paths := src.GetPaths()
+		if len(paths) == 0 {
+			outputBuf.WriteString(fmt.Sprintf("  跳过 %s: 未指定路径\n", src.Name))
+			continue
 		}
+		outputBuf.WriteString(fmt.Sprintf("处理备份源: %s (%s, %d 个路径)\n", src.Name, src.SourceType, len(paths)))
+		srcBackupDir := backupDir
 
-		if src.Compress {
-			tarPath := filepath.Join(workDir, src.Name+".tar.gz")
-			if err := tarCompress(backupDir, tarPath); err != nil {
-				outputBuf.WriteString(fmt.Sprintf("  压缩失败: %v\n", err))
-				continue
+		if src.PackMode == "separate" && src.SourceType != "sqlite" {
+			for i, p := range paths {
+				subDir := filepath.Join(workDir, fmt.Sprintf("%s_%d", src.Name, i))
+				os.MkdirAll(subDir, 0755)
+				var files int
+				var size int64
+				var err error
+				switch src.SourceType {
+				case "file":
+					files, size, err = copyFile(p, subDir)
+				case "directory", "glob":
+					files, size, err = copyGlob(p, subDir)
+				}
+				if err != nil {
+					outputBuf.WriteString(fmt.Sprintf("  路径 %d 备份失败: %v\n", i, err))
+					continue
+				}
+				if files > 0 {
+					tarName := fmt.Sprintf("%s_%d", src.Name, i)
+					tarPath := filepath.Join(workDir, tarName+".tar.gz")
+					if src.Compress {
+						if err := tarCompress(subDir, tarPath); err != nil {
+							outputBuf.WriteString(fmt.Sprintf("  路径 %d 压缩失败: %v\n", i, err))
+							continue
+						}
+						os.Rename(tarPath, filepath.Join(backupDir, tarName+".tar.gz"))
+					} else {
+						for _, f := range listFiles(subDir) {
+							dst := filepath.Join(backupDir, tarName+"_"+filepath.Base(f))
+							os.Rename(f, dst)
+						}
+					}
+				}
+				totalFiles += files
+				totalBytes += size
 			}
-			os.RemoveAll(backupDir)
-			os.MkdirAll(backupDir, 0755)
-			os.Rename(tarPath, filepath.Join(backupDir, src.Name+".tar.gz"))
-			outputBuf.WriteString(fmt.Sprintf("  压缩完成: %s\n", tarPath))
+		} else {
+			for _, p := range paths {
+				switch src.SourceType {
+				case "sqlite":
+					files, size, err := backupSQLite(p, srcBackupDir, src.DbVacuum)
+					if err != nil {
+						outputBuf.WriteString(fmt.Sprintf("  SQLite 备份失败: %v\n", err))
+						continue
+					}
+					totalFiles += files
+					totalBytes += size
+					outputBuf.WriteString(fmt.Sprintf("  SQLite 备份完成: %d 文件, %d 字节\n", files, size))
+					break
+				case "file":
+					files, size, err := copyFile(p, srcBackupDir)
+					if err != nil {
+						outputBuf.WriteString(fmt.Sprintf("  文件复制失败: %v\n", err))
+						continue
+					}
+					totalFiles += files
+					totalBytes += size
+					outputBuf.WriteString(fmt.Sprintf("  文件复制完成: %d 文件, %d 字节\n", files, size))
+				case "directory", "glob":
+					files, size, err := copyGlob(p, srcBackupDir)
+					if err != nil {
+						outputBuf.WriteString(fmt.Sprintf("  文件匹配失败: %v\n", err))
+						continue
+					}
+					totalFiles += files
+					totalBytes += size
+					outputBuf.WriteString(fmt.Sprintf("  文件匹配完成: %d 文件, %d 字节\n", files, size))
+				}
+			}
+
+			if src.Compress {
+				tarPath := filepath.Join(workDir, src.Name+".tar.gz")
+				if err := tarCompress(srcBackupDir, tarPath); err != nil {
+					outputBuf.WriteString(fmt.Sprintf("  压缩失败: %v\n", err))
+					continue
+				}
+				os.RemoveAll(srcBackupDir)
+				os.MkdirAll(srcBackupDir, 0755)
+				os.Rename(tarPath, filepath.Join(srcBackupDir, src.Name+".tar.gz"))
+				outputBuf.WriteString(fmt.Sprintf("  压缩完成: %s\n", tarPath))
+			}
 		}
 	}
 

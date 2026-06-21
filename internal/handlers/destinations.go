@@ -14,13 +14,18 @@ type DestinationHandler struct {
 }
 
 type destForm struct {
-	Name         string `json:"name" binding:"required"`
-	DestType     string `json:"dest_type" binding:"required"`
-	Config       string `json:"config" binding:"required"`
-	MaxRetention int    `json:"max_retention"`
-	KeepOne      bool   `json:"keep_one"`
-	Enabled      bool   `json:"enabled"`
+	Name              string `json:"name" binding:"required"`
+	DestType          string `json:"dest_type" binding:"required"`
+	Config            string `json:"config"`
+	StorageProviderID *int64 `json:"storage_provider_id"`
+	MaxRetention      int    `json:"max_retention"`
+	KeepOne           bool   `json:"keep_one"`
+	Enabled           bool   `json:"enabled"`
 }
+
+
+
+
 
 func (h *DestinationHandler) List(c *gin.Context) {
 	var dests []map[string]interface{}
@@ -44,13 +49,18 @@ func (h *DestinationHandler) Create(c *gin.Context) {
 		utils.Fail(c, 400, "参数错误: "+err.Error())
 		return
 	}
+	configStr := form.Config
+	if configStr == "" && form.StorageProviderID != nil {
+		configStr = `{"path":""}`
+	}
 	result := h.DB.Table("destinations").Create(map[string]interface{}{
-		"name":          form.Name,
-		"dest_type":     form.DestType,
-		"config":        form.Config,
-		"max_retention": form.MaxRetention,
-		"keep_one":      form.KeepOne,
-		"enabled":       form.Enabled,
+		"name":                form.Name,
+		"dest_type":           form.DestType,
+		"config":              configStr,
+		"storage_provider_id": form.StorageProviderID,
+		"max_retention":       form.MaxRetention,
+		"keep_one":            form.KeepOne,
+		"enabled":             form.Enabled,
 	})
 	if result.Error != nil {
 		utils.Fail(c, 500, "创建失败: "+result.Error.Error())
@@ -66,13 +76,18 @@ func (h *DestinationHandler) Update(c *gin.Context) {
 		utils.Fail(c, 400, "参数错误: "+err.Error())
 		return
 	}
-	result := 	h.DB.Table("destinations").Where("id = ?", id).Updates(map[string]interface{}{
-		"name":          form.Name,
-		"dest_type":     form.DestType,
-		"config":        form.Config,
-		"max_retention": form.MaxRetention,
-		"keep_one":      form.KeepOne,
-		"enabled":       form.Enabled,
+	configStr := form.Config
+	if configStr == "" && form.StorageProviderID != nil {
+		configStr = `{"path":""}`
+	}
+	result := h.DB.Table("destinations").Where("id = ?", id).Updates(map[string]interface{}{
+		"name":                form.Name,
+		"dest_type":           form.DestType,
+		"config":              configStr,
+		"storage_provider_id": form.StorageProviderID,
+		"max_retention":       form.MaxRetention,
+		"keep_one":            form.KeepOne,
+		"enabled":             form.Enabled,
 	})
 	if result.RowsAffected == 0 {
 		utils.Fail(c, 404, "备份目标不存在")
@@ -94,23 +109,26 @@ func (h *DestinationHandler) Delete(c *gin.Context) {
 func (h *DestinationHandler) Test(c *gin.Context) {
 	id := c.Param("id")
 	var dest struct {
-		ID           int64
-		Name         string
-		DestType     string `gorm:"column:dest_type"`
-		Config       string
-		MaxRetention int
-		KeepOne      bool
+		ID                int64
+		Name              string
+		DestType          string `gorm:"column:dest_type"`
+		Config            string
+		StorageProviderID *int64
+		MaxRetention      int
+		KeepOne           bool
 	}
 	if err := h.DB.Table("destinations").Where("id = ?", id).First(&dest).Error; err != nil {
 		utils.Fail(c, 404, "备份目标不存在")
 		return
 	}
 
+	configStr := resolveDestConfig(h.DB, dest.Config, dest.StorageProviderID)
+
 	item := executor.DestItem{
 		ID:           dest.ID,
 		Name:         dest.Name,
 		DestType:     dest.DestType,
-		Config:       dest.Config,
+		Config:       configStr,
 		MaxRetention: dest.MaxRetention,
 		KeepOne:      dest.KeepOne,
 	}

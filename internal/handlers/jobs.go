@@ -44,17 +44,20 @@ type sourceRow struct {
 	Name       string
 	SourceType string
 	Path       string
+	Paths      string
+	PackMode   string
 	DbVacuum   bool
 	Compress   bool
 }
 
 type destRow struct {
-	ID           int64
-	Name         string
-	DestType     string
-	Config       string
-	MaxRetention int
-	KeepOne      bool
+	ID                int64
+	Name              string
+	DestType          string
+	Config            string
+	StorageProviderID *int64
+	MaxRetention      int
+	KeepOne           bool
 }
 
 type logRow struct {
@@ -154,6 +157,8 @@ func loadSources(db *gorm.DB, ids []int64) []executor.SourceItem {
 			Name:       r.Name,
 			SourceType: r.SourceType,
 			Path:       r.Path,
+			Paths:      r.Paths,
+			PackMode:   r.PackMode,
 			DbVacuum:   r.DbVacuum,
 			Compress:   r.Compress,
 		})
@@ -169,11 +174,12 @@ func loadDestinations(db *gorm.DB, ids []int64) []executor.DestItem {
 	db.Table("destinations").Where("id IN ? AND enabled = ?", ids, true).Find(&rows)
 	var items []executor.DestItem
 	for _, r := range rows {
+		configStr := resolveDestConfig(db, r.Config, r.StorageProviderID)
 		items = append(items, executor.DestItem{
 			ID:           r.ID,
 			Name:         r.Name,
 			DestType:     r.DestType,
-			Config:       r.Config,
+			Config:       configStr,
 			MaxRetention: r.MaxRetention,
 			KeepOne:      r.KeepOne,
 		})
