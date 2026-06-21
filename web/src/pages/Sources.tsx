@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Table, Button, Modal, Form, Input, Select, Switch, Radio, Space, message, Popconfirm, Typography, Tag } from 'antd'
+import { Table, Button, Modal, Form, Input, Select, Switch, Radio, Space, message, Popconfirm, Typography } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOpenOutlined, DatabaseOutlined, FileOutlined } from '@ant-design/icons'
 import { listSources, createSource, updateSource, deleteSource } from '../api'
 import FileBrowser from '../components/FileBrowser'
@@ -18,6 +18,7 @@ export default function Sources() {
   const [editing, setEditing] = useState<any>(null)
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false)
   const [pathsList, setPathsList] = useState<PathItem[]>([])
+  const [browsePath, setBrowsePath] = useState('')
   const [form] = Form.useForm()
 
   const load = async () => {
@@ -45,8 +46,12 @@ export default function Sources() {
 
   const handleSave = async (values: any) => {
     try {
+      if (pathsList.length === 0) {
+        message.error('请至少添加一个路径')
+        return
+      }
       const cleaned = pathsList.map(p => ({ path: p.path, type: p.type }))
-      const payload = { ...values, paths: JSON.stringify(cleaned) }
+      const payload = { ...values, paths: JSON.stringify(cleaned), path: '' }
       if (editing) {
         await updateSource(editing.id, payload)
         message.success('更新成功')
@@ -150,16 +155,17 @@ export default function Sources() {
                   onPressEnter={(e) => { addPath((e.target as HTMLInputElement).value); (e.target as HTMLInputElement).value = '' }}
                   style={{ flex: 1 }}
                 />
-                <Button icon={<FolderOpenOutlined />} onClick={() => setFileBrowserOpen(true)}>浏览</Button>
+                <Button icon={<FolderOpenOutlined />} onClick={() => { if (pathsList.length > 0) setBrowsePath(pathsList[pathsList.length-1].path); setFileBrowserOpen(true) }}>浏览</Button>
               </div>
             </Space>
           </Form.Item>
           <FileBrowser
             visible={fileBrowserOpen}
             onClose={() => setFileBrowserOpen(false)}
-            onSelect={(p) => { addPath(p); setFileBrowserOpen(false) }}
+            onSelect={(p) => { addPath(p); setBrowsePath(p); setFileBrowserOpen(false) }}
             selectDir={true}
             selectFile={true}
+            defaultPath={browsePath}
           />
           <Form.Item name="pack_mode" label="打包方式">
             <Radio.Group>

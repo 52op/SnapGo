@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Modal, List, Button, Space, Typography, Spin, message, Tag } from 'antd'
 import { FolderOutlined, FileOutlined, ArrowUpOutlined } from '@ant-design/icons'
 import { browsePath } from '../api'
@@ -19,9 +19,10 @@ interface Props {
   onSelect: (path: string) => void
   selectDir?: boolean
   selectFile?: boolean
+  defaultPath?: string
 }
 
-export default function FileBrowser({ visible, onClose, onSelect, selectDir, selectFile }: Props) {
+export default function FileBrowser({ visible, onClose, onSelect, selectDir, selectFile, defaultPath }: Props) {
   const [currentPath, setCurrentPath] = useState('')
   const [entries, setEntries] = useState<FileEntry[]>([])
   const [loading, setLoading] = useState(false)
@@ -40,10 +41,14 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
     setLoading(false)
   }
 
+  const lastPathRef = useRef('')
+
   useEffect(() => {
     if (visible) {
-      loadPath('')
+      loadPath(defaultPath || lastPathRef.current || '')
       setHistory([])
+    } else {
+      lastPathRef.current = currentPath
     }
   }, [visible])
 
