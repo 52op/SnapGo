@@ -593,15 +593,9 @@ func (e *Executor) deleteOldS3(dc DestConfig, cutoff time.Time) error {
 		return nil
 	}
 
-	ch := make(chan minio.ObjectInfo, len(objects))
 	for _, obj := range objects {
-		ch <- obj
-	}
-	close(ch)
-	errCh := client.RemoveObjects(ctx, bucket, ch, minio.RemoveObjectsOptions{})
-	for err := range errCh {
-		if err.Err != nil {
-			return fmt.Errorf("删除 %s 失败: %w", err.ObjectName, err.Err)
+		if err := client.RemoveObject(ctx, bucket, obj.Key, minio.RemoveObjectOptions{}); err != nil {
+			return fmt.Errorf("删除 %s 失败: %w", obj.Key, err)
 		}
 	}
 	return nil
