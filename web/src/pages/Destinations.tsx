@@ -19,7 +19,7 @@ export default function Destinations() {
   const load = async () => {
     setLoading(true)
     try { setData(await listDestinations()) } catch {}
-    try { setProviders(await listProviders()) } catch {}
+    try { const p = await listProviders(); setProviders(Array.isArray(p) ? p : []) } catch {}
     setLoading(false)
   }
 
@@ -126,7 +126,7 @@ export default function Destinations() {
     { value: 'local', label: '本地目录' },
   ]
 
-  const filteredProviders = providers.filter(p => p.dest_type === destType)
+  const filteredProviders = (providers || []).filter(p => p.dest_type === destType)
 
   const renderConfigFields = () => {
     const pathField = (

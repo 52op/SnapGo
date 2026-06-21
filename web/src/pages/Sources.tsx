@@ -103,7 +103,7 @@ export default function Sources() {
   }
 
   const removePath = (p: string) => {
-    setPathsList(pathsList.filter(x => x !== p))
+    setPathsList((pathsList || []).filter(x => x !== p))
   }
 
   return (
@@ -125,7 +125,7 @@ export default function Sources() {
           <Form.Item label="路径列表">
             <Space direction="vertical" style={{ width: '100%' }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {pathsList.map(p => (
+                {(pathsList || []).map(p => (
                   <Tag key={p} closable onClose={() => removePath(p)} style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>{p}</Tag>
                 ))}
               </div>
