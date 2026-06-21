@@ -130,8 +130,8 @@ export default function Destinations() {
 
   const renderConfigFields = () => {
     const pathField = (
-      <Form.Item name="path" label={useProvider ? '路径前缀' : (destType === 'local' ? '路径' : '路径前缀')} help={useProvider ? '备份文件存放的子路径' : undefined}>
-        <Input placeholder={destType === 'local' ? 'D:\\backups' : 'backups/mydb'} />
+      <Form.Item name="path" label="路径前缀" rules={[{ required: true, message: '请输入路径前缀，留空将使用目标名称' }]} help="清理操作将根据此前缀删除过期文件。同一提供商下路径必须唯一，避免误删">
+        <Input placeholder="留空则自动使用备份目标名称" />
       </Form.Item>
     )
 

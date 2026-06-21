@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"snapgo/internal/executor"
 	"snapgo/internal/utils"
 
@@ -43,16 +44,29 @@ func (h *DestinationHandler) Get(c *gin.Context) {
 	utils.OK(c, dests[0])
 }
 
+func ensurePath(configStr, name string) string {
+	if configStr == "" {
+		return `{"path":"` + name + `"}`
+	}
+	var dc map[string]interface{}
+	if err := json.Unmarshal([]byte(configStr), &dc); err != nil {
+		return configStr
+	}
+	if p, ok := dc["path"].(string); !ok || p == "" {
+		dc["path"] = name
+		merged, _ := json.Marshal(dc)
+		return string(merged)
+	}
+	return configStr
+}
+
 func (h *DestinationHandler) Create(c *gin.Context) {
 	var form destForm
 	if err := c.ShouldBindJSON(&form); err != nil {
 		utils.Fail(c, 400, "参数错误: "+err.Error())
 		return
 	}
-	configStr := form.Config
-	if configStr == "" && form.StorageProviderID != nil {
-		configStr = `{"path":""}`
-	}
+	configStr := ensurePath(form.Config, form.Name)
 	result := h.DB.Table("destinations").Create(map[string]interface{}{
 		"name":                form.Name,
 		"dest_type":           form.DestType,
@@ -76,10 +90,7 @@ func (h *DestinationHandler) Update(c *gin.Context) {
 		utils.Fail(c, 400, "参数错误: "+err.Error())
 		return
 	}
-	configStr := form.Config
-	if configStr == "" && form.StorageProviderID != nil {
-		configStr = `{"path":""}`
-	}
+	configStr := ensurePath(form.Config, form.Name)
 	result := h.DB.Table("destinations").Where("id = ?", id).Updates(map[string]interface{}{
 		"name":                form.Name,
 		"dest_type":           form.DestType,

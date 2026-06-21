@@ -113,10 +113,14 @@ func (h *ProviderHandler) Test(c *gin.Context) {
 		utils.Fail(c, 400, "参数错误: "+err.Error())
 		return
 	}
+	var dc map[string]interface{}
+	json.Unmarshal([]byte(form.Config), &dc)
+	dc["type"] = form.DestType
+	merged, _ := json.Marshal(dc)
 	item := executor.DestItem{
 		Name:     "test",
 		DestType: form.DestType,
-		Config:   form.Config,
+		Config:   string(merged),
 	}
 	msg, err := h.Executor.TestConnection(item)
 	if err != nil {
