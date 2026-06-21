@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"snapgo/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -90,4 +93,58 @@ func (h *SourceHandler) Delete(c *gin.Context) {
 		return
 	}
 	utils.OK(c, gin.H{"deleted": true})
+}
+
+func listDriveRoots() []map[string]interface{} {
+	var roots []map[string]interface{}
+	if runtime.GOOS == "windows" {
+		for _, drive := range "ABCDEFGHIJKLMNOPQRSTUVWXYZ" {
+			path := string(drive) + ":\\"
+			if _, err := os.ReadDir(path); err == nil {
+				roots = append(roots, map[string]interface{}{
+					"name":   path,
+					"is_dir": true,
+					"size":   0,
+					"path":   path,
+				})
+			}
+		}
+	} else {
+		roots = append(roots, map[string]interface{}{
+			"name":   "/",
+			"is_dir": true,
+			"size":   0,
+			"path":   "/",
+		})
+	}
+	return roots
+}
+
+func (h *SourceHandler) Browse(c *gin.Context) {
+	browsePath := c.Query("path")
+	if browsePath == "" {
+		utils.OK(c, listDriveRoots())
+		return
+	}
+	entries, err := os.ReadDir(browsePath)
+	if err != nil {
+		utils.Fail(c, 400, "读取目录失败: "+err.Error())
+		return
+	}
+	result := make([]map[string]interface{}, 0, len(entries))
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		absPath := filepath.Join(browsePath, entry.Name())
+		result = append(result, map[string]interface{}{
+			"name":     entry.Name(),
+			"is_dir":   entry.IsDir(),
+			"size":     info.Size(),
+			"mod_time": info.ModTime(),
+			"path":     absPath,
+		})
+	}
+	utils.OK(c, result)
 }

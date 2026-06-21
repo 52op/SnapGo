@@ -1,6 +1,6 @@
 # SSO 单点登录配置
 
-SnapGo 支持对接 [GoAuth](https://github.com/it0731/GoAuth) SSO 服务，使用 RS256 JWT 进行认证。
+SnapGo 支持对接 [GoAuth](https://github.com/52op/GoAuth) SSO 服务，使用 RS256 JWT 进行认证。
 
 ## 配置
 

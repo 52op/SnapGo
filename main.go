@@ -139,6 +139,7 @@ func main() {
 	protected.POST("/sources", sh.Create)
 	protected.PUT("/sources/:id", sh.Update)
 	protected.DELETE("/sources/:id", sh.Delete)
+	protected.GET("/browse", sh.Browse)
 
 	protected.GET("/destinations", dh.List)
 	protected.GET("/destinations/:id", dh.Get)

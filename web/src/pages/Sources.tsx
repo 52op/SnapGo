@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Table, Button, Modal, Form, Input, Select, Switch, Space, message, Popconfirm, Typography } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOpenOutlined } from '@ant-design/icons'
 import { listSources, createSource, updateSource, deleteSource } from '../api'
+import FileBrowser from '../components/FileBrowser'
 
 const { Title } = Typography
 
@@ -10,6 +11,7 @@ export default function Sources() {
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<any>(null)
+  const [fileBrowserOpen, setFileBrowserOpen] = useState(false)
   const [form] = Form.useForm()
 
   const load = async () => {
@@ -88,8 +90,15 @@ export default function Sources() {
             <Select options={typeOptions} />
           </Form.Item>
           <Form.Item name="path" label="路径/匹配模式" rules={[{ required: true }]}>
-            <Input placeholder="例如：C:\data\app.db 或 /data/*.db" />
+            <Input placeholder="例如：C:\data\app.db 或 /data/*.db" addonAfter={<Button size="small" type="text" icon={<FolderOpenOutlined />} onClick={() => setFileBrowserOpen(true)}>浏览</Button>} />
           </Form.Item>
+          <FileBrowser
+            visible={fileBrowserOpen}
+            onClose={() => setFileBrowserOpen(false)}
+            onSelect={(p) => { form.setFieldValue('path', p); setFileBrowserOpen(false) }}
+            selectDir={form.getFieldValue('source_type') === 'directory' || form.getFieldValue('source_type') === 'glob'}
+            selectFile={form.getFieldValue('source_type') === 'file' || form.getFieldValue('source_type') === 'sqlite'}
+          />
           <Form.Item name="db_vacuum" label="SQLite VACUUM 快照" valuePropName="checked">
             <Switch />
           </Form.Item>

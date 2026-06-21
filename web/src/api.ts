@@ -101,6 +101,10 @@ export function testDestination(id: number) {
   return request(`/destinations/${id}/test`, { method: 'POST' })
 }
 
+export function browsePath(path: string) {
+  return request(`/browse?path=${encodeURIComponent(path)}`).then(r => r.data)
+}
+
 export function listJobs() {
   return request('/jobs').then(r => r.data)
 }
