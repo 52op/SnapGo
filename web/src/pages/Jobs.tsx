@@ -69,7 +69,7 @@ export default function Jobs() {
     let destIDs: number[] = []
     try { sourceIDs = JSON.parse(record.source_ids || '[]') } catch {}
     try { destIDs = JSON.parse(record.dest_ids || '[]') } catch {}
-    form.setFieldsValue({ ...record, source_ids: sourceIDs, dest_ids: destIDs })
+    form.setFieldsValue({ name: record.name, cron_expr: record.cron_expr, source_ids: sourceIDs, dest_ids: destIDs, encrypt_key: record.encrypt_key, notify_webhook: record.notify_webhook, enabled: !!record.enabled })
     setModalOpen(true)
   }
 
@@ -107,7 +107,7 @@ export default function Jobs() {
       </div>
       <Table dataSource={data} columns={columns} rowKey="id" loading={loading} size="small" />
 
-      <Modal title={editing ? '编辑备份任务' : '添加备份任务'} open={modalOpen} onCancel={() => { setModalOpen(false); setEditing(null) }} onOk={() => form.submit()} destroyOnClose width={600}>
+      <Modal title={editing ? '编辑备份任务' : '添加备份任务'} open={modalOpen} onCancel={() => { form.resetFields(); setModalOpen(false); setEditing(null) }} onOk={() => form.submit()} width={600}>
         <Form form={form} layout="vertical" onFinish={handleSave} initialValues={{ enabled: true }}>
           <Form.Item name="name" label="任务名称" rules={[{ required: true }]}><Input placeholder="例如：每天凌晨全量备份" /></Form.Item>
           <Form.Item name="cron_expr" label="Cron 表达式" help="留空表示仅手动触发">

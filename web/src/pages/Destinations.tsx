@@ -89,7 +89,7 @@ export default function Destinations() {
           <Button type="link" icon={<EditOutlined />} onClick={() => {
             setEditing(record)
             const cfg = JSON.parse(record.config || '{}')
-            form.setFieldsValue({ name: record.name, dest_type: record.dest_type, max_retention: record.max_retention, keep_one: record.keep_one, enabled: record.enabled, ...cfg })
+            form.setFieldsValue({ name: record.name, dest_type: record.dest_type, max_retention: record.max_retention, keep_one: record.keep_one, enabled: !!record.enabled, ...cfg })
             setDestType(record.dest_type)
             setModalOpen(true)
           }}>编辑</Button>
@@ -149,7 +149,7 @@ export default function Destinations() {
       </div>
       <Table dataSource={data} columns={columns} rowKey="id" loading={loading} size="small" />
 
-      <Modal title={editing ? '编辑备份目标' : '添加备份目标'} open={modalOpen} onCancel={() => { setModalOpen(false); setEditing(null) }} onOk={() => form.submit()} destroyOnClose width={600}>
+      <Modal title={editing ? '编辑备份目标' : '添加备份目标'} open={modalOpen} onCancel={() => { form.resetFields(); setModalOpen(false); setEditing(null) }} onOk={() => form.submit()} width={600}>
         <Form form={form} layout="vertical" onFinish={handleSave} initialValues={{ dest_type: 's3', max_retention: 30, enabled: true }}>
           <Form.Item name="name" label="名称" rules={[{ required: true }]}><Input placeholder="例如：阿里云OSS" /></Form.Item>
           <Form.Item name="dest_type" label="存储类型" rules={[{ required: true }]}>

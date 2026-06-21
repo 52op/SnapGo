@@ -55,7 +55,7 @@ export default function Sources() {
       title: '操作', key: 'action',
       render: (_: any, record: any) => (
         <Space>
-          <Button type="link" icon={<EditOutlined />} onClick={() => { setEditing(record); form.setFieldsValue(record); setModalOpen(true) }}>编辑</Button>
+          <Button type="link" icon={<EditOutlined />} onClick={() => { setEditing(record); form.setFieldsValue({ ...record, compress: !!record.compress, db_vacuum: !!record.db_vacuum, enabled: !!record.enabled }); setModalOpen(true) }}>编辑</Button>
           <Popconfirm title="确定删除?" onConfirm={() => handleDelete(record.id)}>
             <Button type="link" danger icon={<DeleteOutlined />}>删除</Button>
           </Popconfirm>
@@ -79,7 +79,7 @@ export default function Sources() {
       </div>
       <Table dataSource={data} columns={columns} rowKey="id" loading={loading} size="small" />
 
-      <Modal title={editing ? '编辑备份源' : '添加备份源'} open={modalOpen} onCancel={() => { setModalOpen(false); setEditing(null) }} onOk={() => form.submit()} destroyOnClose>
+      <Modal title={editing ? '编辑备份源' : '添加备份源'} open={modalOpen} onCancel={() => { form.resetFields(); setModalOpen(false); setEditing(null) }} onOk={() => form.submit()}>
         <Form form={form} layout="vertical" onFinish={handleSave} initialValues={{ source_type: 'sqlite', compress: true, enabled: true, db_vacuum: true, sort_order: 0 }}>
           <Form.Item name="name" label="名称" rules={[{ required: true }]}>
             <Input placeholder="例如：用户数据库" />
