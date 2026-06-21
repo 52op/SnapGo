@@ -54,6 +54,7 @@ type destRow struct {
 	DestType     string
 	Config       string
 	MaxRetention int
+	KeepOne      bool
 }
 
 type logRow struct {
@@ -174,6 +175,7 @@ func loadDestinations(db *gorm.DB, ids []int64) []executor.DestItem {
 			DestType:     r.DestType,
 			Config:       r.Config,
 			MaxRetention: r.MaxRetention,
+			KeepOne:      r.KeepOne,
 		})
 	}
 	return items

@@ -37,6 +37,7 @@ type Destination struct {
 	DestType     string    `json:"dest_type" gorm:"not null"`
 	Config       string    `json:"config" gorm:"type:text;not null"`
 	MaxRetention int       `json:"max_retention" gorm:"default:30"`
+	KeepOne      bool      `json:"keep_one" gorm:"default:false"`
 	Enabled      bool      `json:"enabled" gorm:"default:true"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time

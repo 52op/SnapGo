@@ -55,7 +55,8 @@ export default function Destinations() {
   const handleSave = async (values: any) => {
     try {
       const config = buildConfig(values)
-      const payload = { name: values.name, dest_type: values.dest_type, config, max_retention: values.max_retention || 30, enabled: values.enabled ?? true }
+      const keepOne = values.keep_one ?? false
+      const payload = { name: values.name, dest_type: values.dest_type, config, max_retention: keepOne ? 0 : (values.max_retention || 30), keep_one: keepOne, enabled: values.enabled ?? true }
       if (editing) {
         await updateDestination(editing.id, payload)
         message.success('更新成功')
@@ -78,7 +79,7 @@ export default function Destinations() {
   const columns = [
     { title: '名称', dataIndex: 'name', key: 'name' },
     { title: '类型', dataIndex: 'dest_type', key: 'dest_type', render: (t: string) => ({ s3: 'S3 兼容', webdav: 'WebDAV', ftp: 'FTP', sftp: 'SFTP', local: '本地' })[t] || t },
-    { title: '保留天数', dataIndex: 'max_retention', key: 'max_retention', render: (v: number) => v ? `${v}天` : '永久' },
+    { title: '保留策略', dataIndex: 'keep_one', key: 'keep_one', render: (keep: boolean, record: any) => keep ? '唯一' : (record.max_retention ? `${record.max_retention}天` : '永久') },
     { title: '启用', dataIndex: 'enabled', key: 'enabled', render: (v: boolean) => v ? '是' : '否' },
     {
       title: '操作', key: 'action',
@@ -88,7 +89,7 @@ export default function Destinations() {
           <Button type="link" icon={<EditOutlined />} onClick={() => {
             setEditing(record)
             const cfg = JSON.parse(record.config || '{}')
-            form.setFieldsValue({ name: record.name, dest_type: record.dest_type, max_retention: record.max_retention, enabled: record.enabled, ...cfg })
+            form.setFieldsValue({ name: record.name, dest_type: record.dest_type, max_retention: record.max_retention, keep_one: record.keep_one, enabled: record.enabled, ...cfg })
             setDestType(record.dest_type)
             setModalOpen(true)
           }}>编辑</Button>
@@ -155,7 +156,14 @@ export default function Destinations() {
             <Select options={destTypeOptions} onChange={(v) => setDestType(v)} />
           </Form.Item>
           {renderConfigFields()}
-          <Form.Item name="max_retention" label="保留天数(0=永久)"><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
+          <Form.Item name="keep_one" label="始终唯一" valuePropName="checked"><Switch /></Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.keep_one !== cur.keep_one}>
+            {({ getFieldValue }) =>
+              getFieldValue('keep_one') ? null : (
+                <Form.Item name="max_retention" label="保留天数(0=永久)"><InputNumber min={0} style={{ width: '100%' }} /></Form.Item>
+              )
+            }
+          </Form.Item>
           <Form.Item name="enabled" label="启用" valuePropName="checked"><Switch /></Form.Item>
         </Form>
       </Modal>

@@ -47,6 +47,7 @@ type destRow struct {
 	DestType     string
 	Config       string
 	MaxRetention int
+	KeepOne      bool
 }
 
 type logRow struct {
@@ -150,6 +151,7 @@ func (s *Scheduler) runJob(job jobRow) {
 				DestType:     r.DestType,
 				Config:       r.Config,
 				MaxRetention: r.MaxRetention,
+				KeepOne:      r.KeepOne,
 			})
 		}
 	}

@@ -40,6 +40,7 @@ type DestItem struct {
 	DestType     string
 	Config       string
 	MaxRetention int
+	KeepOne      bool
 }
 
 type DestConfig struct {
@@ -160,6 +161,14 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 
 	for _, dest := range dests {
 		outputBuf.WriteString(fmt.Sprintf("传输到目标: %s (%s)\n", dest.Name, dest.DestType))
+		if dest.KeepOne {
+			outputBuf.WriteString("  清理旧备份（保持唯一）...\n")
+			if err := e.CleanAllBackups(dest); err != nil {
+				outputBuf.WriteString(fmt.Sprintf("  清理失败: %v\n", err))
+			} else {
+				outputBuf.WriteString("  清理完成\n")
+			}
+		}
 		if err := e.upload(dest, backupDir, &outputBuf); err != nil {
 			outputBuf.WriteString(fmt.Sprintf("  传输失败: %v\n", err))
 			continue
@@ -512,6 +521,27 @@ func (e *Executor) testLocal(dc DestConfig) (string, error) {
 		return "", fmt.Errorf("本地路径不是目录: %s", dstDir)
 	}
 	return fmt.Sprintf("本地路径可用: %s", dstDir), nil
+}
+
+func (e *Executor) CleanAllBackups(dest DestItem) error {
+	var dc DestConfig
+	if err := json.Unmarshal([]byte(dest.Config), &dc); err != nil {
+		return err
+	}
+	cutoff := time.Now().Add(100 * 365 * 24 * time.Hour)
+	switch dc.Type {
+	case "s3":
+		return e.deleteOldS3(dc, cutoff)
+	case "webdav":
+		return e.deleteOldWebDAV(dc, cutoff)
+	case "ftp":
+		return e.deleteOldFTP(dc, cutoff)
+	case "sftp":
+		return e.deleteOldSFTP(dc, cutoff)
+	case "local":
+		return e.deleteOldLocal(dc, cutoff)
+	}
+	return nil
 }
 
 func (e *Executor) DeleteOldBackups(dest DestItem) error {

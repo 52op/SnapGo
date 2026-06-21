@@ -18,6 +18,7 @@ type destForm struct {
 	DestType     string `json:"dest_type" binding:"required"`
 	Config       string `json:"config" binding:"required"`
 	MaxRetention int    `json:"max_retention"`
+	KeepOne      bool   `json:"keep_one"`
 	Enabled      bool   `json:"enabled"`
 }
 
@@ -48,6 +49,7 @@ func (h *DestinationHandler) Create(c *gin.Context) {
 		"dest_type":     form.DestType,
 		"config":        form.Config,
 		"max_retention": form.MaxRetention,
+		"keep_one":      form.KeepOne,
 		"enabled":       form.Enabled,
 	})
 	if result.Error != nil {
@@ -64,11 +66,12 @@ func (h *DestinationHandler) Update(c *gin.Context) {
 		utils.Fail(c, 400, "参数错误: "+err.Error())
 		return
 	}
-	result := h.DB.Table("destinations").Where("id = ?", id).Updates(map[string]interface{}{
+	result := 	h.DB.Table("destinations").Where("id = ?", id).Updates(map[string]interface{}{
 		"name":          form.Name,
 		"dest_type":     form.DestType,
 		"config":        form.Config,
 		"max_retention": form.MaxRetention,
+		"keep_one":      form.KeepOne,
 		"enabled":       form.Enabled,
 	})
 	if result.RowsAffected == 0 {
@@ -96,6 +99,7 @@ func (h *DestinationHandler) Test(c *gin.Context) {
 		DestType     string `gorm:"column:dest_type"`
 		Config       string
 		MaxRetention int
+		KeepOne      bool
 	}
 	if err := h.DB.Table("destinations").Where("id = ?", id).First(&dest).Error; err != nil {
 		utils.Fail(c, 404, "备份目标不存在")
@@ -108,6 +112,7 @@ func (h *DestinationHandler) Test(c *gin.Context) {
 		DestType:     dest.DestType,
 		Config:       dest.Config,
 		MaxRetention: dest.MaxRetention,
+		KeepOne:      dest.KeepOne,
 	}
 
 	msg, err := h.Executor.TestConnection(item)
