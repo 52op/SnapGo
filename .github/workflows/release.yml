@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            ext: ""
+          - os: linux
+            arch: arm64
+            ext: ""
+          - os: windows
+            arch: amd64
+            ext: ".exe"
+          - os: darwin
+            arch: amd64
+            ext: ""
+          - os: darwin
+            arch: arm64
+            ext: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build frontend
+        run: |
+          cd web
+          npm install
+          npm run build
+          cd ..
+
+      - name: Build binary (${{ matrix.os }}-${{ matrix.arch }})
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          go build -ldflags="-s -w" -o "snapgo-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}" .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snapgo-${{ matrix.os }}-${{ matrix.arch }}
+          path: snapgo-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: snapgo-*
+          merge-multiple: true
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          NOTES="## 更新内容\n\n"
+          if git tag -l --format='%(contents)' "${{ github.ref_name }}" | head -1 | grep -q .; then
+            NOTES="$(git tag -l --format='%(contents)' "${{ github.ref_name }}")"
+          else
+            COMMITS="$(git log --oneline --no-decorate $(git tag --sort=-creatordate | head -2 | tail -1)..HEAD 2>/dev/null || git log --oneline --no-decorate -10)"
+            NOTES="${NOTES}${COMMITS}"
+          fi
+          NOTES="${NOTES//'%'/'%25'}"
+          NOTES="${NOTES//$'\n'/'%0A'}"
+          NOTES="${NOTES//$'\r'/'%0D'}"
+          echo "notes=$NOTES" >> $GITHUB_OUTPUT
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: SnapGo ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.notes }}
+          files: |
+            snapgo-linux-amd64
+            snapgo-linux-arm64
+            snapgo-windows-amd64.exe
+            snapgo-darwin-amd64
+            snapgo-darwin-arm64

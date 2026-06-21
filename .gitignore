@@ -1,0 +1,30 @@
+# Binary
+SnapGo.exe
+snapgo
+
+# Config (contains secrets)
+config.toml
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+
+# Node
+node_modules/
+
+# Build output
+web/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
