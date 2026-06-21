@@ -33,7 +33,7 @@ export default function Destinations() {
   }
 
   const buildConfig = (values: any) => {
-    const base: any = { type: values.dest_type }
+    const base: any = { type: values.dest_type, path: values.path || '' }
     switch (values.dest_type) {
       case 's3':
         Object.assign(base, { endpoint: values.endpoint, bucket: values.bucket, region: values.region || 'auto', access_key_id: values.access_key_id, secret_access_key: values.secret_access_key })
@@ -118,12 +118,14 @@ export default function Destinations() {
           <Form.Item name="region" label="Region"><Input placeholder="auto" /></Form.Item>
           <Form.Item name="access_key_id" label="Access Key ID" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="secret_access_key" label="Secret Access Key" rules={[{ required: true }]}><Input.Password /></Form.Item>
+          <Form.Item name="path" label="路径前缀" help="备份文件存放的子路径，留空则放在 Bucket 根目录。清理将针对此前缀下的所有文件"><Input placeholder="backups/mydb" /></Form.Item>
         </>)
       case 'webdav':
         return (<>
           <Form.Item name="url" label="WebDAV URL" rules={[{ required: true }]}><Input placeholder="https://example.com/remote.php/dav/" /></Form.Item>
           <Form.Item name="user" label="用户名" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="password" label="密码" rules={[{ required: true }]}><Input.Password /></Form.Item>
+          <Form.Item name="path" label="子目录" help="备份文件存放的子路径，留空则放在根目录。清理将针对此目录下的所有文件"><Input placeholder="backups/mydb" /></Form.Item>
         </>)
       case 'ftp':
       case 'sftp':
@@ -131,6 +133,7 @@ export default function Destinations() {
           <Form.Item name="host" label="主机地址" rules={[{ required: true }]}><Input placeholder="example.com:22" /></Form.Item>
           <Form.Item name="user" label="用户名" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="password" label="密码" rules={[{ required: true }]}><Input.Password /></Form.Item>
+          <Form.Item name="path" label="子目录" help="备份文件存放的目录，清理将针对此目录下的所有文件"><Input placeholder="backups/mydb" /></Form.Item>
         </>)
       case 'local':
         return (<>
