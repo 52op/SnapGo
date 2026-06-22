@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Table, Button, Modal, Form, Input, Select, Switch, Radio, Space, message, Popconfirm, Typography, Tooltip } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOpenOutlined, DatabaseOutlined, FileOutlined, InfoCircleOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOpenOutlined, DatabaseOutlined, FileOutlined, InfoCircleOutlined, ArrowRightOutlined } from '@ant-design/icons'
 import { listSources, createSource, updateSource, deleteSource } from '../api'
 import FileBrowser from '../components/FileBrowser'
 
@@ -19,6 +19,8 @@ export default function Sources() {
   const [fileBrowserOpen, setFileBrowserOpen] = useState(false)
   const [pathsList, setPathsList] = useState<PathItem[]>([])
   const [browsePath, setBrowsePath] = useState('')
+  const [showHint, setShowHint] = useState(false)
+  const hintTimer = useRef<ReturnType<typeof setTimeout>>()
   const [form] = Form.useForm()
 
   const load = async () => {
@@ -117,9 +119,19 @@ export default function Sources() {
 
   const addPath = (p: string) => {
     if (p && !pathsList.some(x => x.path === p)) {
-      setPathsList([...pathsList, { path: p, type: 'file' }])
+      const next = [...pathsList, { path: p, type: 'file' }]
+      setPathsList(next)
+      if (next.length === 1) {
+        setShowHint(true)
+        clearTimeout(hintTimer.current)
+        hintTimer.current = setTimeout(() => setShowHint(false), 6000)
+      }
     }
   }
+
+  useEffect(() => {
+    return () => clearTimeout(hintTimer.current)
+  }, [])
 
   const removePath = (idx: number) => {
     setPathsList((pathsList || []).filter((_, i) => i !== idx))
@@ -127,6 +139,12 @@ export default function Sources() {
 
   return (
     <div>
+      <style>{`
+        @keyframes blink-hint {
+          0%, 100% { opacity: 0; transform: translateX(-4px); }
+          50% { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <Title level={4}>备份源管理</Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setPathsList([]); setModalOpen(true) }}>添加备份源</Button>
@@ -142,7 +160,12 @@ export default function Sources() {
             <Space direction="vertical" style={{ width: '100%' }}>
               {(pathsList || []).map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <Button size="small" type={item.type === 'sqlite' ? 'primary' : 'default'} icon={item.type === 'sqlite' ? <DatabaseOutlined /> : <FileOutlined />} onClick={() => togglePathType(idx)} style={{ minWidth: 60 }}>
+                  {idx === 0 && showHint && (
+                    <span style={{ animation: 'blink-hint 0.8s ease-in-out infinite', color: '#1890ff', fontSize: 16, whiteSpace: 'nowrap' }}>
+                      <ArrowRightOutlined /> 点此切换
+                    </span>
+                  )}
+                  <Button size="small" type={item.type === 'sqlite' ? 'primary' : 'default'} icon={item.type === 'sqlite' ? <DatabaseOutlined /> : <FileOutlined />} onClick={() => { togglePathType(idx); setShowHint(false) }} style={{ minWidth: 60 }}>
                     {item.type === 'sqlite' ? '数据库' : '文件'}
                   </Button>
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 13 }}>{item.path}</span>
