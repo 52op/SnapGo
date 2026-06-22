@@ -59,7 +59,14 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
   }
 
   const goUp = () => {
-    if (history.length === 0) return
+    if (history.length === 0) {
+      if (!currentPath) return
+      const parent = currentPath.replace(/[/\\][^/\\]+$/, '')
+      if (parent && parent !== currentPath) {
+        loadPath(/^[a-zA-Z]:$/.test(parent) ? parent + '\\' : parent)
+      }
+      return
+    }
     const prev = history[history.length - 1]
     setHistory(h => h.slice(0, -1))
     loadPath(prev)
