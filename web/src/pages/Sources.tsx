@@ -162,7 +162,6 @@ export default function Sources() {
           </Form.Item>
           <Form.Item label={<span>路径列表 <Tooltip title='点击路径左侧的"文件/数据库"按钮可切换备份方式（数据库使用 VACUUM INTO 快照，文件直接打包）'><InfoCircleOutlined style={{ color: '#999' }} /></Tooltip></span>}>
             <Space direction="vertical" style={{ width: '100%' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>目录路径会被自动打包成 tar.gz（不受压缩开关控制）</Text>
               {(pathsList || []).map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   {idx === 0 && showHint && !item.isDir && (
@@ -171,11 +170,15 @@ export default function Sources() {
                     </span>
                   )}
                   {item.isDir ? (
-                    <FolderOutlined style={{ fontSize: 18, color: '#faad14', minWidth: 60, textAlign: 'center' }} />
+                    <Tooltip title="目录路径会被自动打包成 tar.gz（不受压缩开关控制）">
+                      <Button size="small" style={{ minWidth: 60, color: '#faad14', borderColor: '#faad14' }} icon={<FolderOutlined />}>目录</Button>
+                    </Tooltip>
                   ) : (
-                  <Button size="small" type={item.type === 'sqlite' ? 'primary' : 'default'} icon={item.type === 'sqlite' ? <DatabaseOutlined /> : <FileOutlined />} onClick={() => { togglePathType(idx); setShowHint(false) }} style={{ minWidth: 60 }}>
-                    {item.type === 'sqlite' ? '数据库' : '文件'}
-                  </Button>
+                    <Tooltip title={item.type === 'sqlite' ? '使用 VACUUM INTO 快照备份' : '文件直接打包'}>
+                      <Button size="small" type={item.type === 'sqlite' ? 'primary' : 'default'} icon={item.type === 'sqlite' ? <DatabaseOutlined /> : <FileOutlined />} onClick={() => { togglePathType(idx); setShowHint(false) }} style={{ minWidth: 60 }}>
+                        {item.type === 'sqlite' ? '数据库' : '文件'}
+                      </Button>
+                    </Tooltip>
                   )}
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 13 }}>{item.path}</span>
                   <Button size="small" danger type="text" onClick={() => removePath(idx)}>×</Button>
