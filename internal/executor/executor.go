@@ -144,6 +144,7 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 	var outputBuf bytes.Buffer
 	var totalFiles int
 	var totalBytes int64
+	var uploadFailed bool
 
 	backupDir := filepath.Join(workDir, "backup")
 	os.MkdirAll(backupDir, 0755)
@@ -283,6 +284,7 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 		}
 		if err := e.upload(dest, backupDir, &outputBuf); err != nil {
 			outputBuf.WriteString(fmt.Sprintf("  传输失败: %v\n", err))
+			uploadFailed = true
 			continue
 		}
 		outputBuf.WriteString("  传输完成\n")
@@ -303,6 +305,16 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 			Output:    outputBuf.String(),
 			FileCount: 0,
 			SizeBytes: 0,
+		}, fmt.Errorf("%s", errMsg)
+	}
+
+	if uploadFailed {
+		errMsg := "部分目标传输失败，请查看日志详情"
+		outputBuf.WriteString(fmt.Sprintf("[%s] %s\n", time.Now().Format(time.RFC3339), errMsg))
+		return &RunResult{
+			Output:    outputBuf.String(),
+			FileCount: totalFiles,
+			SizeBytes: totalBytes,
 		}, fmt.Errorf("%s", errMsg)
 	}
 
@@ -382,10 +394,7 @@ func (e *Executor) uploadToS3(dc DestConfig, files []string) error {
 		remotePath := dc.Path + "/" + filepath.Base(f)
 		remotePath = strings.TrimPrefix(remotePath, "/")
 		log.Printf("[S3上传] %s -> %s/%s (size=%d, sha256=%s)", filepath.Base(f), bucket, remotePath, size, hash)
-		info, err := client.FPutObject(ctx, bucket, remotePath, f, minio.PutObjectOptions{
-			DisableContentSha256: true,
-			DisableMultipart:     true,
-		})
+		info, err := client.FPutObject(ctx, bucket, remotePath, f, minio.PutObjectOptions{})
 		if err != nil {
 			return fmt.Errorf("上传 %s 失败: %w", f, err)
 		}
