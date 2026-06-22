@@ -156,13 +156,16 @@ export default function Sources() {
           <Form.Item name="name" label="名称" rules={[{ required: true }]}>
             <Input placeholder="例如：项目1" />
           </Form.Item>
+          <Form.Item name="source_type" initialValue="file" hidden>
+            <Input />
+          </Form.Item>
           <Form.Item label={<span>路径列表 <Tooltip title='点击路径左侧的"文件/数据库"按钮可切换备份方式（数据库使用 VACUUM INTO 快照，文件直接打包）'><InfoCircleOutlined style={{ color: '#999' }} /></Tooltip></span>}>
             <Space direction="vertical" style={{ width: '100%' }}>
               {(pathsList || []).map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   {idx === 0 && showHint && (
-                    <span style={{ animation: 'blink-hint 0.8s ease-in-out infinite', color: '#1890ff', fontSize: 16, whiteSpace: 'nowrap' }}>
-                      <ArrowRightOutlined /> 点此切换
+                    <span style={{ animation: 'blink-hint 0.8s ease-in-out infinite', color: '#1890ff', fontSize: 12, whiteSpace: 'nowrap' }}>
+                      点此切换 <ArrowRightOutlined />
                     </span>
                   )}
                   <Button size="small" type={item.type === 'sqlite' ? 'primary' : 'default'} icon={item.type === 'sqlite' ? <DatabaseOutlined /> : <FileOutlined />} onClick={() => { togglePathType(idx); setShowHint(false) }} style={{ minWidth: 60 }}>

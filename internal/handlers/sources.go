@@ -16,7 +16,7 @@ type SourceHandler struct {
 
 type sourceForm struct {
 	Name       string `json:"name" binding:"required"`
-	SourceType string `json:"source_type" binding:"required"`
+	SourceType string `json:"source_type"`
 	Path       string `json:"path"`
 	Paths      string `json:"paths"`
 	PackMode   string `json:"pack_mode"`
