@@ -11,8 +11,16 @@ import (
 	"gorm.io/gorm"
 )
 
-func SendEmail(db *gorm.DB, jobName string, jobNotifyEmail bool, updates map[string]interface{}) {
-	if !jobNotifyEmail {
+func SendEmail(db *gorm.DB, jobName string, notifySuccess, notifyFail bool, updates map[string]interface{}) {
+	status := "success"
+	if s, ok := updates["status"].(string); ok && s == "failed" {
+		status = "failed"
+	}
+
+	if status == "failed" && !notifyFail {
+		return
+	}
+	if status == "success" && !notifySuccess {
 		return
 	}
 
@@ -30,13 +38,13 @@ func SendEmail(db *gorm.DB, jobName string, jobNotifyEmail bool, updates map[str
 		siteTitle = "SnapGo"
 	}
 
-	status := "成功"
-	if s, ok := updates["status"].(string); ok && s == "failed" {
-		status = "失败"
+	statusCN := "成功"
+	if status == "failed" {
+		statusCN = "失败"
 	}
 
-	subject := fmt.Sprintf("[%s] 备份任务 [%s] 执行%s", siteTitle, jobName, status)
-	text := fmt.Sprintf("备份任务 [%s] 已于 %s 执行%s", jobName, time.Now().Format("2006-01-02 15:04:05"), status)
+	subject := fmt.Sprintf("[%s] 备份任务 [%s] 执行%s", siteTitle, jobName, statusCN)
+	text := fmt.Sprintf("备份任务 [%s] 已于 %s 执行%s", jobName, time.Now().Format("2006-01-02 15:04:05"), statusCN)
 
 	body := fmt.Sprintf(`{"to":"%s","subject":"%s","text":"%s"}`, notifyEmailAddr, subject, text)
 	apiURL := strings.TrimRight(formailURL, "/") + "/v1/emails"

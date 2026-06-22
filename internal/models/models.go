@@ -62,9 +62,10 @@ type Job struct {
 	SourceIDs     string     `json:"source_ids" gorm:"type:text"`
 	DestIDs       string     `json:"dest_ids" gorm:"type:text"`
 	EncryptKey    string     `json:"encrypt_key" gorm:"type:text"`
-	NotifyWebhook string     `json:"notify_webhook"`
-	NotifyEmail   bool       `json:"notify_email" gorm:"default:false"`
-	Enabled       bool       `json:"enabled" gorm:"default:true"`
+	NotifyWebhook      string     `json:"notify_webhook"`
+	NotifyEmailSuccess bool       `json:"notify_email_success" gorm:"default:false"`
+	NotifyEmailFail    bool       `json:"notify_email_fail" gorm:"default:false"`
+	Enabled            bool       `json:"enabled" gorm:"default:true"`
 	LastRunAt     *time.Time `json:"last_run_at"`
 	LastStatus    string     `json:"last_status" gorm:"default:''"`
 	CreatedAt     time.Time

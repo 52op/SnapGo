@@ -46,17 +46,18 @@ type Scheduler struct {
 }
 
 type jobRow struct {
-	ID            int64
-	Name          string
-	CronExpr      string
-	SourceIDs     string
-	DestIDs       string
-	EncryptKey    string
-	NotifyWebhook string
-	NotifyEmail   bool
-	Enabled       bool
-	LastRunAt     *time.Time
-	LastStatus    string
+	ID                 int64
+	Name               string
+	CronExpr           string
+	SourceIDs          string
+	DestIDs            string
+	EncryptKey         string
+	NotifyWebhook      string
+	NotifyEmailSuccess bool
+	NotifyEmailFail    bool
+	Enabled            bool
+	LastRunAt          *time.Time
+	LastStatus         string
 }
 
 type sourceRow struct {
@@ -227,8 +228,8 @@ func (s *Scheduler) runJob(job jobRow) {
 		notifyWebhook(job, updates)
 	}
 
-	if job.NotifyEmail {
-		go notify.SendEmail(s.db, job.Name, job.NotifyEmail, updates)
+	if job.NotifyEmailSuccess || job.NotifyEmailFail {
+		go notify.SendEmail(s.db, job.Name, job.NotifyEmailSuccess, job.NotifyEmailFail, updates)
 	}
 }
 

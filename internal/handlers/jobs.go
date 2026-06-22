@@ -23,23 +23,25 @@ type jobForm struct {
 	SourceIDs     []int64 `json:"source_ids"`
 	DestIDs       []int64 `json:"dest_ids"`
 	EncryptKey    string  `json:"encrypt_key"`
-	NotifyWebhook string  `json:"notify_webhook"`
-	NotifyEmail   bool    `json:"notify_email"`
-	Enabled       bool    `json:"enabled"`
+	NotifyWebhook      string  `json:"notify_webhook"`
+	NotifyEmailSuccess bool    `json:"notify_email_success"`
+	NotifyEmailFail    bool    `json:"notify_email_fail"`
+	Enabled            bool    `json:"enabled"`
 }
 
 type jobRow struct {
-	ID            int64
-	Name          string
-	CronExpr      string
-	SourceIDs     string
-	DestIDs       string
-	EncryptKey    string
-	NotifyWebhook string
-	NotifyEmail   bool
-	Enabled       bool
-	LastRunAt     *time.Time
-	LastStatus    string
+	ID                 int64
+	Name               string
+	CronExpr           string
+	SourceIDs          string
+	DestIDs            string
+	EncryptKey         string
+	NotifyWebhook      string
+	NotifyEmailSuccess bool
+	NotifyEmailFail    bool
+	Enabled            bool
+	LastRunAt          *time.Time
+	LastStatus         string
 }
 
 type sourceRow struct {
@@ -98,14 +100,15 @@ func (h *JobHandler) Create(c *gin.Context) {
 		return
 	}
 	result := h.DB.Table("jobs").Create(map[string]interface{}{
-		"name":           form.Name,
-		"cron_expr":      form.CronExpr,
-		"source_ids":     idsToJSON(form.SourceIDs),
-		"dest_ids":       idsToJSON(form.DestIDs),
-		"encrypt_key":    form.EncryptKey,
-		"notify_webhook": form.NotifyWebhook,
-		"notify_email":   form.NotifyEmail,
-		"enabled":        form.Enabled,
+		"name":                 form.Name,
+		"cron_expr":            form.CronExpr,
+		"source_ids":           idsToJSON(form.SourceIDs),
+		"dest_ids":             idsToJSON(form.DestIDs),
+		"encrypt_key":          form.EncryptKey,
+		"notify_webhook":       form.NotifyWebhook,
+		"notify_email_success": form.NotifyEmailSuccess,
+		"notify_email_fail":    form.NotifyEmailFail,
+		"enabled":              form.Enabled,
 	})
 	if result.Error != nil {
 		utils.Fail(c, 500, "创建失败: "+result.Error.Error())
@@ -122,14 +125,15 @@ func (h *JobHandler) Update(c *gin.Context) {
 		return
 	}
 	updates := map[string]interface{}{
-		"name":           form.Name,
-		"cron_expr":      form.CronExpr,
-		"source_ids":     idsToJSON(form.SourceIDs),
-		"dest_ids":       idsToJSON(form.DestIDs),
-		"encrypt_key":    form.EncryptKey,
-		"notify_webhook": form.NotifyWebhook,
-		"notify_email":   form.NotifyEmail,
-		"enabled":        form.Enabled,
+		"name":                 form.Name,
+		"cron_expr":            form.CronExpr,
+		"source_ids":           idsToJSON(form.SourceIDs),
+		"dest_ids":             idsToJSON(form.DestIDs),
+		"encrypt_key":          form.EncryptKey,
+		"notify_webhook":       form.NotifyWebhook,
+		"notify_email_success": form.NotifyEmailSuccess,
+		"notify_email_fail":    form.NotifyEmailFail,
+		"enabled":              form.Enabled,
 	}
 	result := h.DB.Table("jobs").Where("id = ?", id).Updates(updates)
 	if result.RowsAffected == 0 {
@@ -249,8 +253,8 @@ func (h *JobHandler) RunNow(c *gin.Context) {
 		}
 		h.DB.Table("job_logs").Where("id = ?", logID).Updates(updates)
 
-		if job.NotifyEmail {
-			go notify.SendEmail(h.DB, job.Name, job.NotifyEmail, updates)
+		if job.NotifyEmailSuccess || job.NotifyEmailFail {
+			go notify.SendEmail(h.DB, job.Name, job.NotifyEmailSuccess, job.NotifyEmailFail, updates)
 		}
 	}(logEntry.ID)
 
