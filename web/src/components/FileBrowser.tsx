@@ -36,6 +36,7 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
       setEntries(await browsePath(path))
       setCurrentPath(path)
     } catch (e: any) {
+      setEntries([])
       message.error('读取目录失败: ' + e.message)
     }
     setLoading(false)

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Table, Button, Modal, Form, Input, Select, Switch, Radio, Space, message, Popconfirm, Typography } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOpenOutlined, DatabaseOutlined, FileOutlined } from '@ant-design/icons'
+import { Table, Button, Modal, Form, Input, Select, Switch, Radio, Space, message, Popconfirm, Typography, Tooltip } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOpenOutlined, DatabaseOutlined, FileOutlined, InfoCircleOutlined } from '@ant-design/icons'
 import { listSources, createSource, updateSource, deleteSource } from '../api'
 import FileBrowser from '../components/FileBrowser'
 
@@ -138,7 +138,7 @@ export default function Sources() {
           <Form.Item name="name" label="名称" rules={[{ required: true }]}>
             <Input placeholder="例如：项目1" />
           </Form.Item>
-          <Form.Item label="路径列表">
+          <Form.Item label={<span>路径列表 <Tooltip title='点击路径左侧的"文件/数据库"按钮可切换备份方式（数据库使用 VACUUM INTO 快照，文件直接打包）'><InfoCircleOutlined style={{ color: '#999' }} /></Tooltip></span>}>
             <Space direction="vertical" style={{ width: '100%' }}>
               {(pathsList || []).map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -155,7 +155,13 @@ export default function Sources() {
                   onPressEnter={(e) => { addPath((e.target as HTMLInputElement).value); (e.target as HTMLInputElement).value = '' }}
                   style={{ flex: 1 }}
                 />
-                <Button icon={<FolderOpenOutlined />} onClick={() => { if (pathsList.length > 0) setBrowsePath(pathsList[pathsList.length-1].path); setFileBrowserOpen(true) }}>浏览</Button>
+                <Button icon={<FolderOpenOutlined />} onClick={() => {
+                  if (pathsList.length > 0) {
+                    const last = pathsList[pathsList.length-1].path
+                    setBrowsePath(last.includes('.') ? last.replace(/\\[^\\]+$/, '').replace(/\/[^/]+$/, '') : last)
+                  }
+                  setFileBrowserOpen(true)
+                }}>浏览</Button>
               </div>
             </Space>
           </Form.Item>
