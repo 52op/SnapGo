@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -184,6 +186,10 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 							outputBuf.WriteString(fmt.Sprintf("  路径 %d 压缩失败: %v\n", i, err))
 							continue
 						}
+						if vErr := validateTarGz(tarPath); vErr != nil {
+							outputBuf.WriteString(fmt.Sprintf("  路径 %d 压缩包校验失败: %v\n", i, vErr))
+							continue
+						}
 						os.Rename(tarPath, filepath.Join(backupDir, tarName+".tar.gz"))
 					} else {
 						for _, f := range listFiles(subDir) {
@@ -232,17 +238,21 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 				}
 			}
 
-			if src.Compress || hasDir {
-				tarPath := filepath.Join(workDir, src.Name+".tar.gz")
-				if err := tarCompress(backupDir, tarPath); err != nil {
-					outputBuf.WriteString(fmt.Sprintf("  压缩失败: %v\n", err))
-					continue
-				}
-				os.RemoveAll(backupDir)
-				os.MkdirAll(backupDir, 0755)
-				os.Rename(tarPath, filepath.Join(backupDir, src.Name+".tar.gz"))
-				outputBuf.WriteString(fmt.Sprintf("  压缩完成: %s\n", tarPath))
+		if src.Compress || hasDir {
+			tarPath := filepath.Join(workDir, src.Name+".tar.gz")
+			if err := tarCompress(backupDir, tarPath); err != nil {
+				outputBuf.WriteString(fmt.Sprintf("  压缩失败: %v\n", err))
+				continue
 			}
+			if vErr := validateTarGz(tarPath); vErr != nil {
+				outputBuf.WriteString(fmt.Sprintf("  压缩包校验失败: %v\n", vErr))
+				continue
+			}
+			os.RemoveAll(backupDir)
+			os.MkdirAll(backupDir, 0755)
+			os.Rename(tarPath, filepath.Join(backupDir, src.Name+".tar.gz"))
+			outputBuf.WriteString(fmt.Sprintf("  压缩完成: %s\n", tarPath))
+		}
 		}
 	}
 
@@ -293,7 +303,7 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 			Output:    outputBuf.String(),
 			FileCount: 0,
 			SizeBytes: 0,
-		}, fmt.Errorf(errMsg)
+		}, fmt.Errorf("%s", errMsg)
 	}
 
 	outputBuf.WriteString(fmt.Sprintf("[%s] 备份任务完成\n", time.Now().Format(time.RFC3339)))
@@ -368,12 +378,15 @@ func (e *Executor) uploadToS3(dc DestConfig, files []string) error {
 	}
 
 	for _, f := range files {
+		hash, size, _ := fileSHA256(f)
 		remotePath := dc.Path + "/" + filepath.Base(f)
 		remotePath = strings.TrimPrefix(remotePath, "/")
-		_, err := client.FPutObject(ctx, bucket, remotePath, f, minio.PutObjectOptions{})
+		log.Printf("[S3上传] %s -> %s/%s (size=%d, sha256=%s)", filepath.Base(f), bucket, remotePath, size, hash)
+		info, err := client.FPutObject(ctx, bucket, remotePath, f, minio.PutObjectOptions{})
 		if err != nil {
 			return fmt.Errorf("上传 %s 失败: %w", f, err)
 		}
+		log.Printf("[S3上传] 完成 %s (uploadSize=%d)", filepath.Base(f), info.Size)
 	}
 	return nil
 }
@@ -1113,4 +1126,54 @@ func backupSQLite(dbPath, dstDir string, vacuum bool) (int, int64, error) {
 
 	dstInfo, _ := os.Stat(dstPath)
 	return 1, dstInfo.Size(), nil
+}
+
+func validateTarGz(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("打开文件失败: %w", err)
+	}
+	defer f.Close()
+
+	gzr, err := gzip.NewReader(f)
+	if err != nil {
+		return fmt.Errorf("gzip 解压失败: %w", err)
+	}
+	defer gzr.Close()
+
+	tr := tar.NewReader(gzr)
+	count := 0
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("读取 tar 条目失败: %w", err)
+		}
+		if hdr.Typeflag == tar.TypeReg {
+			if _, err := io.Copy(io.Discard, tr); err != nil {
+				return fmt.Errorf("读取文件 %s 数据失败: %w", hdr.Name, err)
+			}
+		}
+		count++
+	}
+	if count == 0 {
+		return fmt.Errorf("tar.gz 为空")
+	}
+	return nil
+}
+
+func fileSHA256(path string) (string, int64, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", 0, err
+	}
+	defer f.Close()
+	h := sha256.New()
+	n, err := io.Copy(h, f)
+	if err != nil {
+		return "", 0, err
+	}
+	return fmt.Sprintf("%x", h.Sum(nil)), n, nil
 }
