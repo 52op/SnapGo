@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"snapgo/internal/executor"
+	"snapgo/internal/notify"
 	"snapgo/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -247,6 +248,10 @@ func (h *JobHandler) RunNow(c *gin.Context) {
 			})
 		}
 		h.DB.Table("job_logs").Where("id = ?", logID).Updates(updates)
+
+		if job.NotifyEmail {
+			go notify.SendEmail(h.DB, job.Name, job.NotifyEmail, updates)
+		}
 	}(logEntry.ID)
 
 	utils.OK(c, gin.H{"message": "备份任务已启动", "log_id": logEntry.ID})
