@@ -964,13 +964,28 @@ func tarCompress(srcDir, tarPath string) error {
 		if err != nil {
 			return nil
 		}
-		if info.IsDir() {
-			return nil
-		}
 		rel, err := filepath.Rel(srcDir, fpath)
 		if err != nil {
 			return nil
 		}
+		rel = filepath.ToSlash(rel)
+
+		if info.IsDir() {
+			if rel == "." {
+				return nil
+			}
+			header := &tar.Header{
+				Name:     rel + "/",
+				Typeflag: tar.TypeDir,
+				Mode:     0755,
+				ModTime:  info.ModTime(),
+			}
+			if err := tw.WriteHeader(header); err != nil {
+				return fmt.Errorf("写入 tar 目录头失败: %w", err)
+			}
+			return nil
+		}
+
 		header, err := tar.FileInfoHeader(info, "")
 		if err != nil {
 			return nil
