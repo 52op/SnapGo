@@ -949,25 +949,22 @@ func tarCompress(srcDir, tarPath string) error {
 	tw := tar.NewWriter(gzw)
 	defer tw.Close()
 
-	entries, err := os.ReadDir(srcDir)
-	if err != nil {
-		return fmt.Errorf("读取备份目录失败: %w", err)
-	}
-
-	for _, entry := range entries {
-		fpath := filepath.Join(srcDir, entry.Name())
-		info, err := os.Stat(fpath)
+	err = filepath.Walk(srcDir, func(fpath string, info os.FileInfo, err error) error {
 		if err != nil {
-			continue
+			return nil
 		}
 		if info.IsDir() {
-			continue
+			return nil
+		}
+		rel, err := filepath.Rel(srcDir, fpath)
+		if err != nil {
+			return nil
 		}
 		header, err := tar.FileInfoHeader(info, "")
 		if err != nil {
-			continue
+			return nil
 		}
-		header.Name = entry.Name()
+		header.Name = rel
 		if err := tw.WriteHeader(header); err != nil {
 			return fmt.Errorf("写入 tar 头失败: %w", err)
 		}
@@ -978,6 +975,10 @@ func tarCompress(srcDir, tarPath string) error {
 		if _, err := tw.Write(data); err != nil {
 			return fmt.Errorf("写入 tar 数据失败: %w", err)
 		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("遍历备份目录失败: %w", err)
 	}
 	return nil
 }
