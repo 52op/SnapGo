@@ -171,6 +171,7 @@ func main() {
 
 	protected.GET("/settings", sh2.Get)
 	protected.PUT("/settings", sh2.Update)
+	protected.POST("/settings/test-formail", sh2.TestFormail)
 
 	sched.Start()
 

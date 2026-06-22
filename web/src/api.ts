@@ -180,3 +180,7 @@ export function getSettings() {
 export function updateSettings(data: Record<string, string>) {
   return request('/settings', { method: 'PUT', body: JSON.stringify(data) })
 }
+
+export function testFormail(data: { formail_url: string; apikey: string; email: string }) {
+  return request('/settings/test-formail', { method: 'POST', body: JSON.stringify(data) })
+}
