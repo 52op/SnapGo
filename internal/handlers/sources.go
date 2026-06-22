@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -48,11 +49,12 @@ func (h *SourceHandler) Create(c *gin.Context) {
 		utils.Fail(c, 400, "参数错误: "+err.Error())
 		return
 	}
+	pathsJSON := enrichPathIsDir(form.Paths)
 	result := h.DB.Table("sources").Create(map[string]interface{}{
 		"name":        form.Name,
 		"source_type": form.SourceType,
 		"path":        form.Path,
-		"paths":       form.Paths,
+		"paths":       pathsJSON,
 		"pack_mode":   form.PackMode,
 		"db_vacuum":   form.DbVacuum,
 		"compress":    form.Compress,
@@ -73,11 +75,12 @@ func (h *SourceHandler) Update(c *gin.Context) {
 		utils.Fail(c, 400, "参数错误: "+err.Error())
 		return
 	}
+	pathsJSON := enrichPathIsDir(form.Paths)
 	result := h.DB.Table("sources").Where("id = ?", id).Updates(map[string]interface{}{
 		"name":        form.Name,
 		"source_type": form.SourceType,
 		"path":        form.Path,
-		"paths":       form.Paths,
+		"paths":       pathsJSON,
 		"pack_mode":   form.PackMode,
 		"db_vacuum":   form.DbVacuum,
 		"compress":    form.Compress,
@@ -167,4 +170,32 @@ func (h *SourceHandler) CheckPath(c *gin.Context) {
 		return
 	}
 	utils.OK(c, gin.H{"exists": true, "is_dir": st.IsDir()})
+}
+
+type pathEntry struct {
+	Path  string `json:"path"`
+	Type  string `json:"type"`
+	IsDir bool   `json:"isDir"`
+}
+
+func enrichPathIsDir(pathsJSON string) string {
+	if pathsJSON == "" {
+		return pathsJSON
+	}
+	var entries []pathEntry
+	if err := json.Unmarshal([]byte(pathsJSON), &entries); err != nil {
+		return pathsJSON
+	}
+	changed := false
+	for i, e := range entries {
+		if st, err := os.Stat(e.Path); err == nil && st.IsDir() && !e.IsDir {
+			entries[i].IsDir = true
+			changed = true
+		}
+	}
+	if !changed {
+		return pathsJSON
+	}
+	b, _ := json.Marshal(entries)
+	return string(b)
 }

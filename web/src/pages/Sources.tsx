@@ -127,9 +127,15 @@ export default function Sources() {
     },
   ]
 
-  const addPath = (p: string, isDir?: boolean) => {
+  const addPath = async (p: string, isDir?: boolean) => {
     if (p && !pathsList.some(x => x.path === p)) {
-      const next = [...pathsList, { path: p, type: 'file', isDir }]
+      if (isDir === undefined) {
+        try {
+          const res = await checkPath(p)
+          isDir = res.is_dir
+        } catch {}
+      }
+      const next = [...pathsList, { path: p, type: isDir ? 'file' : 'file', isDir: !!isDir }]
       setPathsList(next)
       if (next.length === 1) {
         setShowHint(true)
