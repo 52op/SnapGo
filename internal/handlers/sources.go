@@ -154,3 +154,17 @@ func (h *SourceHandler) Browse(c *gin.Context) {
 	}
 	utils.OK(c, result)
 }
+
+func (h *SourceHandler) CheckPath(c *gin.Context) {
+	p := c.Query("path")
+	if p == "" {
+		utils.Fail(c, 400, "path is required")
+		return
+	}
+	st, err := os.Stat(p)
+	if err != nil {
+		utils.OK(c, gin.H{"exists": false, "is_dir": false})
+		return
+	}
+	utils.OK(c, gin.H{"exists": true, "is_dir": st.IsDir()})
+}

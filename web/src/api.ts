@@ -105,6 +105,10 @@ export function browsePath(path: string) {
   return request(`/browse?path=${encodeURIComponent(path)}`).then(r => r.data)
 }
 
+export function checkPath(path: string) {
+  return request(`/check-path?path=${encodeURIComponent(path)}`).then(r => r.data)
+}
+
 export function listProviders() {
   return request('/providers').then(r => r.data)
 }

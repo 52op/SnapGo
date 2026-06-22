@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { Table, Button, Modal, Form, Input, Select, Switch, Radio, Space, message, Popconfirm, Typography, Tooltip } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOpenOutlined, DatabaseOutlined, FileOutlined, FolderOutlined, InfoCircleOutlined, ArrowRightOutlined } from '@ant-design/icons'
-import { listSources, createSource, updateSource, deleteSource } from '../api'
+import { listSources, createSource, updateSource, deleteSource, checkPath } from '../api'
 import FileBrowser from '../components/FileBrowser'
 
 const { Title, Text } = Typography
@@ -42,7 +42,7 @@ export default function Sources() {
       if (!Array.isArray(arr)) return []
       return arr.map((item: any) => {
         if (typeof item === 'string') return { path: item, type: record.source_type || 'file' }
-        return { path: item.path || '', type: item.type || 'file' }
+        return { path: item.path || '', type: item.type || 'file', isDir: !!item.isDir }
       }).filter((x: PathItem) => x.path)
     } catch { return [] }
   }
@@ -53,7 +53,7 @@ export default function Sources() {
         message.error('请至少添加一个路径')
         return
       }
-      const cleaned = pathsList.map(p => ({ path: p.path, type: p.type }))
+      const cleaned = pathsList.map(p => ({ path: p.path, type: p.type, isDir: !!p.isDir }))
       const payload = { ...values, paths: JSON.stringify(cleaned), path: '' }
       if (editing) {
         await updateSource(editing.id, payload)
@@ -104,9 +104,18 @@ export default function Sources() {
       title: '操作', key: 'action',
       render: (_: any, record: any) => (
         <Space>
-          <Button type="link" icon={<EditOutlined />} onClick={() => {
+          <Button type="link" icon={<EditOutlined />} onClick={async () => {
             setEditing(record)
-            setPathsList(parsePaths(record))
+            const parsed = parsePaths(record)
+            const enriched = await Promise.all(parsed.map(async (item) => {
+              if (item.isDir) return item
+              try {
+                const res = await checkPath(item.path)
+                if (res.is_dir) return { ...item, isDir: true }
+              } catch {}
+              return item
+            }))
+            setPathsList(enriched)
             form.setFieldsValue({ name: record.name, source_type: record.source_type, pack_mode: record.pack_mode || 'bundle', compress: !!record.compress, enabled: !!record.enabled, sort_order: record.sort_order })
             setModalOpen(true)
           }}>编辑</Button>

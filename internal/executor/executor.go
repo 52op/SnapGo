@@ -37,8 +37,9 @@ type SourceItem struct {
 }
 
 type PathEntry struct {
-	Path string `json:"path"`
-	Type string `json:"type"` // "sqlite" or "file"
+	Path  string `json:"path"`
+	Type  string `json:"type"`  // "sqlite" or "file"
+	IsDir bool   `json:"isDir"`
 }
 
 func (s *SourceItem) GetPathEntries() []PathEntry {
@@ -57,6 +58,11 @@ func (s *SourceItem) GetPathEntries() []PathEntry {
 		for i := range entries {
 			if entries[i].Type == "" {
 				entries[i].Type = s.SourceType
+			}
+			if !entries[i].IsDir {
+				if st, err := os.Stat(entries[i].Path); err == nil && st.IsDir() {
+					entries[i].IsDir = true
+				}
 			}
 		}
 		return entries
@@ -157,14 +163,10 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 				var files int
 				var size int64
 				var err error
-				isDir := false
 				switch ent.Type {
 				case "sqlite":
 					files, size, err = backupSQLite(ent.Path, subDir, true)
 				case "file":
-					if st, stErr := os.Stat(ent.Path); stErr == nil && st.IsDir() {
-						isDir = true
-					}
 					files, size, err = copyFile(ent.Path, subDir)
 				case "directory", "glob":
 					files, size, err = copyGlob(ent.Path, subDir)
@@ -174,9 +176,10 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 					continue
 				}
 				if files > 0 {
-					tarName := fmt.Sprintf("%s_%d", src.Name, i)
+					baseName := filepath.Base(ent.Path)
+					tarName := fmt.Sprintf("%s_%s", src.Name, baseName)
 					tarPath := filepath.Join(workDir, tarName+".tar.gz")
-					if src.Compress || isDir {
+					if src.Compress || ent.IsDir {
 						if err := tarCompress(subDir, tarPath); err != nil {
 							outputBuf.WriteString(fmt.Sprintf("  路径 %d 压缩失败: %v\n", i, err))
 							continue
