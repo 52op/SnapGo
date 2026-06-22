@@ -157,10 +157,14 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 				var files int
 				var size int64
 				var err error
+				isDir := false
 				switch ent.Type {
 				case "sqlite":
 					files, size, err = backupSQLite(ent.Path, subDir, true)
 				case "file":
+					if st, stErr := os.Stat(ent.Path); stErr == nil && st.IsDir() {
+						isDir = true
+					}
 					files, size, err = copyFile(ent.Path, subDir)
 				case "directory", "glob":
 					files, size, err = copyGlob(ent.Path, subDir)
@@ -172,7 +176,7 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 				if files > 0 {
 					tarName := fmt.Sprintf("%s_%d", src.Name, i)
 					tarPath := filepath.Join(workDir, tarName+".tar.gz")
-					if src.Compress {
+					if src.Compress || isDir {
 						if err := tarCompress(subDir, tarPath); err != nil {
 							outputBuf.WriteString(fmt.Sprintf("  路径 %d 压缩失败: %v\n", i, err))
 							continue
@@ -189,6 +193,7 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 				totalBytes += size
 			}
 		} else {
+			hasDir := false
 			for _, ent := range entries {
 				switch ent.Type {
 				case "sqlite":
@@ -201,6 +206,9 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 					totalBytes += size
 					outputBuf.WriteString(fmt.Sprintf("  SQLite 备份完成: %d 文件, %d 字节\n", files, size))
 				case "file":
+					if st, stErr := os.Stat(ent.Path); stErr == nil && st.IsDir() {
+						hasDir = true
+					}
 					files, size, err := copyFile(ent.Path, backupDir)
 					if err != nil {
 						outputBuf.WriteString(fmt.Sprintf("  文件复制失败: %v\n", err))
@@ -221,7 +229,7 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 				}
 			}
 
-			if src.Compress {
+			if src.Compress || hasDir {
 				tarPath := filepath.Join(workDir, src.Name+".tar.gz")
 				if err := tarCompress(backupDir, tarPath); err != nil {
 					outputBuf.WriteString(fmt.Sprintf("  压缩失败: %v\n", err))

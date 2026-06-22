@@ -161,6 +161,7 @@ export default function Sources() {
           </Form.Item>
           <Form.Item label={<span>路径列表 <Tooltip title='点击路径左侧的"文件/数据库"按钮可切换备份方式（数据库使用 VACUUM INTO 快照，文件直接打包）'><InfoCircleOutlined style={{ color: '#999' }} /></Tooltip></span>}>
             <Space direction="vertical" style={{ width: '100%' }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>目录路径会被自动打包成 tar.gz（不受压缩开关控制）</Text>
               {(pathsList || []).map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   {idx === 0 && showHint && (
