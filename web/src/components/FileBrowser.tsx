@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, Fragment } from 'react'
 import { Modal, Button, Space, Typography, Spin, message, Tag, Dropdown, Input } from 'antd'
-import { FolderOutlined, FileOutlined, ArrowUpOutlined, SearchOutlined } from '@ant-design/icons'
+import { FolderOutlined, FileOutlined, ArrowUpOutlined, ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons'
 import { browsePath } from '../api'
 
 const { Text } = Typography
@@ -72,18 +72,23 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
     loadPath(dir.path)
   }
 
-  const goUp = () => {
-    if (history.length === 0) {
-      if (!currentPath) return
-      const parent = currentPath.replace(/[/\\][^/\\]+$/, '')
-      if (parent && parent !== currentPath) {
-        loadPath(/^[a-zA-Z]:$/.test(parent) ? parent + '\\' : parent)
-      }
-      return
-    }
+  const canGoUp = () => {
+    if (!currentPath) return false
+    const parent = currentPath.replace(/[/\\][^/\\]+$/, '')
+    return parent && parent !== currentPath
+  }
+
+  const goBack = () => {
+    if (history.length === 0) return
     const prev = history[history.length - 1]
     setHistory(h => h.slice(0, -1))
     loadPath(prev)
+  }
+
+  const goUp = () => {
+    if (!canGoUp()) return
+    const parent = currentPath.replace(/[/\\][^/\\]+$/, '')
+    loadPath(/^[a-zA-Z]:$/.test(parent) ? parent + '\\' : parent)
   }
 
   const navigateTo = (path: string) => {
@@ -181,9 +186,10 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
 
   return (
     <Modal title="浏览服务器文件" open={visible} onCancel={onClose} footer={null} width={640} destroyOnClose>
-      <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-        <Button size="small" icon={<ArrowUpOutlined />} disabled={history.length === 0 && !currentPath} onClick={goUp}>上级</Button>
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', background: '#f5f5f5', border: '1px solid #d9d9d9', borderRadius: 4, padding: '2px 8px', minHeight: 30, gap: 0 }}>
+      <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4, height: 32 }}>
+        <Button size="small" icon={<ArrowLeftOutlined />} disabled={history.length === 0} onClick={goBack} style={{ width: 32, padding: 0 }} title="后退" />
+        <Button size="small" icon={<ArrowUpOutlined />} disabled={!canGoUp()} onClick={goUp} style={{ width: 32, padding: 0 }} title="上级" />
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', background: '#f5f5f5', border: '1px solid #d9d9d9', borderRadius: 4, padding: '0 8px', height: 32, gap: 0 }}>
           {editing ? (
             <Input
               ref={editInputRef}
@@ -196,7 +202,7 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
               style={{ padding: 0, background: 'transparent', fontSize: 13 }}
             />
           ) : (
-            <div style={{ flex: 1, overflow: 'hidden', cursor: 'text' }} onClick={() => { setEditing(true); setEditPath(currentPath) }}>
+            <div style={{ flex: 1, overflow: 'hidden', cursor: 'text', lineHeight: '30px' }} onClick={() => { setEditing(true); setEditPath(currentPath) }}>
               {segments ? segments.map((seg, i) => (
                 <Fragment key={i}>
                   {i > 0 && (
@@ -228,7 +234,7 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
           onChange={e => setSearchText(e.target.value)}
           allowClear
           size="small"
-          style={{ width: 120, flexShrink: 0 }}
+          style={{ width: 120, height: 32, flexShrink: 0 }}
         />
       </div>
       <Spin spinning={loading}>
