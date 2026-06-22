@@ -987,6 +987,9 @@ func copyFile(src, dstDir string) (int, int64, error) {
 	if err != nil {
 		return 0, 0, err
 	}
+	if info.IsDir() {
+		return copyDirRecursive(src, dstDir)
+	}
 	data, err := os.ReadFile(src)
 	if err != nil {
 		return 0, 0, err
@@ -996,6 +999,39 @@ func copyFile(src, dstDir string) (int, int64, error) {
 		return 0, 0, err
 	}
 	return 1, info.Size(), nil
+}
+
+func copyDirRecursive(srcDir, dstDir string) (int, int64, error) {
+	var totalFiles int
+	var totalBytes int64
+	err := filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(srcDir, path)
+		if rel == "." {
+			return nil
+		}
+		dst := filepath.Join(dstDir, rel)
+		if info.IsDir() {
+			os.MkdirAll(dst, 0755)
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		if err := os.WriteFile(dst, data, info.Mode()); err != nil {
+			return nil
+		}
+		totalFiles++
+		totalBytes += info.Size()
+		return nil
+	})
+	if totalFiles == 0 {
+		return 0, 0, fmt.Errorf("目录为空或所有文件读取失败")
+	}
+	return totalFiles, totalBytes, err
 }
 
 func copyGlob(pattern string, dstDir string) (int, int64, error) {
