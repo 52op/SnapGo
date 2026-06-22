@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { Table, Button, Modal, Form, Input, Select, Switch, Radio, Space, message, Popconfirm, Typography, Tooltip } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOpenOutlined, DatabaseOutlined, FileOutlined, FolderOutlined, InfoCircleOutlined, ArrowRightOutlined } from '@ant-design/icons'
-import { listSources, createSource, updateSource, deleteSource, checkPath } from '../api'
+import { listSources, createSource, updateSource, deleteSource } from '../api'
 import FileBrowser from '../components/FileBrowser'
 
 const { Title, Text } = Typography
@@ -104,18 +104,9 @@ export default function Sources() {
       title: '操作', key: 'action',
       render: (_: any, record: any) => (
         <Space>
-          <Button type="link" icon={<EditOutlined />} onClick={async () => {
+          <Button type="link" icon={<EditOutlined />} onClick={() => {
             setEditing(record)
-            const parsed = parsePaths(record)
-            const enriched = await Promise.all(parsed.map(async (item) => {
-              if (item.isDir) return item
-              try {
-                const res = await checkPath(item.path)
-                if (res.is_dir) return { ...item, isDir: true }
-              } catch {}
-              return item
-            }))
-            setPathsList(enriched)
+            setPathsList(parsePaths(record))
             form.setFieldsValue({ name: record.name, source_type: record.source_type, pack_mode: record.pack_mode || 'bundle', compress: !!record.compress, enabled: !!record.enabled, sort_order: record.sort_order })
             setModalOpen(true)
           }}>编辑</Button>
@@ -127,15 +118,9 @@ export default function Sources() {
     },
   ]
 
-  const addPath = async (p: string, isDir?: boolean) => {
+  const addPath = (p: string, isDir?: boolean) => {
     if (p && !pathsList.some(x => x.path === p)) {
-      if (isDir === undefined) {
-        try {
-          const res = await checkPath(p)
-          isDir = res.is_dir
-        } catch {}
-      }
-      const next = [...pathsList, { path: p, type: isDir ? 'file' : 'file', isDir: !!isDir }]
+      const next = [...pathsList, { path: p, type: 'file', isDir }]
       setPathsList(next)
       if (next.length === 1) {
         setShowHint(true)
