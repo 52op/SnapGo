@@ -4,7 +4,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOpenOutlined, Databas
 import { listSources, createSource, updateSource, deleteSource } from '../api'
 import FileBrowser from '../components/FileBrowser'
 
-const { Title } = Typography
+const { Title, Text } = Typography
 
 interface PathItem {
   path: string
