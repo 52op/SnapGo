@@ -130,7 +130,7 @@ export default function Destinations() {
 
   const renderConfigFields = () => {
     const pathField = (
-      <Form.Item name="path" label="路径前缀" rules={[{ required: true, message: '请输入路径前缀，留空将使用目标名称' }]} help="清理操作将根据此前缀删除过期文件。同一提供商下路径必须唯一，避免误删">
+      <Form.Item name="path" label="路径前缀" help="留空则自动使用备份目标名称。清理操作将根据此前缀删除过期文件，同一提供商下路径必须唯一">
         <Input placeholder="留空则自动使用备份目标名称" />
       </Form.Item>
     )
