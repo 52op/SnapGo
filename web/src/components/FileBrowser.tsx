@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react'
-import { Modal, List, Button, Space, Typography, Spin, message, Tag } from 'antd'
+import { useEffect, useState, useRef, Fragment } from 'react'
+import { Modal, Button, Space, Typography, Spin, message, Tag } from 'antd'
 import { FolderOutlined, FileOutlined, ArrowUpOutlined } from '@ant-design/icons'
 import { browsePath } from '../api'
 
@@ -28,13 +28,18 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
   const [loading, setLoading] = useState(false)
   const [history, setHistory] = useState<string[]>([])
   const [selectedFile, setSelectedFile] = useState<{ path: string; isDir: boolean } | null>(null)
+  const [drives, setDrives] = useState<string[]>([])
 
   const loadPath = async (path: string) => {
     setLoading(true)
     setSelectedFile(null)
     try {
-      setEntries(await browsePath(path))
+      const result = await browsePath(path)
+      setEntries(result || [])
       setCurrentPath(path)
+      if (!path && Array.isArray(result)) {
+        setDrives(result.filter((e: FileEntry) => e.is_dir).map((e: FileEntry) => e.name))
+      }
     } catch (e: any) {
       setEntries([])
       message.error('读取目录失败: ' + e.message)
@@ -72,6 +77,11 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
     loadPath(prev)
   }
 
+  const navigateTo = (p: string) => {
+    setHistory(h => [...h, currentPath])
+    loadPath(p)
+  }
+
   const handleSelect = () => {
     if (selectedFile) {
       onSelect(selectedFile.path, selectedFile.isDir)
@@ -84,12 +94,57 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
   const dirs = entries.filter(e => e.is_dir)
   const files = entries.filter(e => !e.is_dir)
 
+  const pathSegments = () => {
+    if (!currentPath) return null
+    const segs: { label: string; path: string }[] = []
+    if (/^[a-zA-Z]:\\/.test(currentPath)) {
+      const drive = currentPath.substring(0, 3)
+      segs.push({ label: drive, path: drive })
+      const rest = currentPath.substring(3).replace(/\\$/, '').split('\\').filter(Boolean)
+      let acc = drive
+      for (const part of rest) {
+        acc += part + '\\'
+        segs.push({ label: part, path: acc })
+      }
+    } else {
+      segs.push({ label: '/', path: '/' })
+      const parts = currentPath.split('/').filter(Boolean)
+      let acc = '/'
+      for (const part of parts) {
+        acc += (acc === '/' ? '' : '/') + part
+        segs.push({ label: part, path: acc })
+      }
+    }
+    return segs
+  }
+
+  const segments = pathSegments()
+
   return (
     <Modal title="浏览服务器文件" open={visible} onCancel={onClose} footer={null} width={640} destroyOnClose>
-      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Button size="small" icon={<ArrowUpOutlined />} disabled={history.length === 0} onClick={goUp}>上级</Button>
-        <Text ellipsis style={{ flex: 1, fontSize: 13 }} code>{currentPath || '(根目录)'}</Text>
+      <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <Button size="small" icon={<ArrowUpOutlined />} disabled={history.length === 0 && (!currentPath)} onClick={goUp}>上级</Button>
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          {segments ? segments.map((seg, i) => (
+            <Fragment key={i}>
+              {i > 0 && <span style={{ color: '#999', fontSize: 13 }}>/</span>}
+              <Button type="link" size="small" style={{ padding: '0 2px', fontSize: 13, height: 'auto' }} onClick={() => navigateTo(seg.path)}>
+                {seg.label}
+              </Button>
+            </Fragment>
+          )) : <Text style={{ fontSize: 13, color: '#999' }}>根目录</Text>}
+        </div>
       </div>
+      {currentPath && drives.length > 0 && (
+        <div style={{ marginBottom: 8, padding: '4px 8px', background: '#fafafa', borderRadius: 4, display: 'flex', gap: 4, alignItems: 'center' }}>
+          <Text style={{ fontSize: 12, color: '#999', whiteSpace: 'nowrap' }}>快速跳转:</Text>
+          {drives.map(d => (
+            <Button key={d} size="small" type={currentPath.startsWith(d) ? 'primary' : 'default'} style={{ fontSize: 12, padding: '0 6px' }} onClick={() => navigateTo(d)}>
+              {d}
+            </Button>
+          ))}
+        </div>
+      )}
       <Spin spinning={loading}>
         <div style={{ maxHeight: 400, overflow: 'auto', border: '1px solid #f0f0f0', borderRadius: 6 }}>
           {dirs.length === 0 && files.length === 0 && !loading && (

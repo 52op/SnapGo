@@ -148,9 +148,9 @@ export default function Sources() {
       `}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <Title level={4}>备份源管理</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setPathsList([]); setModalOpen(true) }}>添加备份源</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); form.resetFields(); setPathsList([]); setShowHint(false); clearTimeout(hintTimer.current); setModalOpen(true) }}>添加备份源</Button>
       </div>
-      <Table dataSource={data} columns={columns} rowKey="id" loading={loading} size="small" />
+      <Table dataSource={data || []} columns={columns} rowKey="id" loading={loading} size="small" />
 
       <Modal title={editing ? '编辑备份源' : '添加备份源'} open={modalOpen} onCancel={() => { form.resetFields(); setModalOpen(false); setEditing(null); setPathsList([]) }} onOk={() => form.submit()} width={640}>
         <Form form={form} layout="vertical" onFinish={handleSave} initialValues={{ source_type: 'file', pack_mode: 'bundle', compress: true, enabled: true, sort_order: 0 }}>
