@@ -171,11 +171,11 @@ export default function Sources() {
                   )}
                   {item.isDir ? (
                     <Tooltip title="目录路径会被自动打包成 tar.gz（不受压缩开关控制）">
-                      <Button size="small" style={{ minWidth: 60, color: '#faad14', borderColor: '#faad14' }} icon={<FolderOutlined />}>目录</Button>
+                      <Button size="small" style={{ width: 80, color: '#faad14', borderColor: '#faad14' }} icon={<FolderOutlined />}>目录</Button>
                     </Tooltip>
                   ) : (
                     <Tooltip title={item.type === 'sqlite' ? '使用 VACUUM INTO 快照备份' : '文件直接打包'}>
-                      <Button size="small" type={item.type === 'sqlite' ? 'primary' : 'default'} icon={item.type === 'sqlite' ? <DatabaseOutlined /> : <FileOutlined />} onClick={() => { togglePathType(idx); setShowHint(false) }} style={{ minWidth: 60 }}>
+                      <Button size="small" type={item.type === 'sqlite' ? 'primary' : 'default'} icon={item.type === 'sqlite' ? <DatabaseOutlined /> : <FileOutlined />} onClick={() => { togglePathType(idx); setShowHint(false) }} style={{ width: 80 }}>
                         {item.type === 'sqlite' ? '数据库' : '文件'}
                       </Button>
                     </Tooltip>
