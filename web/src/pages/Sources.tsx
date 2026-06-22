@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { Table, Button, Modal, Form, Input, Select, Switch, Radio, Space, message, Popconfirm, Typography, Tooltip } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOpenOutlined, DatabaseOutlined, FileOutlined, InfoCircleOutlined, ArrowRightOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, FolderOpenOutlined, DatabaseOutlined, FileOutlined, FolderOutlined, InfoCircleOutlined, ArrowRightOutlined } from '@ant-design/icons'
 import { listSources, createSource, updateSource, deleteSource } from '../api'
 import FileBrowser from '../components/FileBrowser'
 
@@ -9,6 +9,7 @@ const { Title } = Typography
 interface PathItem {
   path: string
   type: string
+  isDir?: boolean
 }
 
 export default function Sources() {
@@ -117,9 +118,9 @@ export default function Sources() {
     },
   ]
 
-  const addPath = (p: string) => {
+  const addPath = (p: string, isDir?: boolean) => {
     if (p && !pathsList.some(x => x.path === p)) {
-      const next = [...pathsList, { path: p, type: 'file' }]
+      const next = [...pathsList, { path: p, type: 'file', isDir }]
       setPathsList(next)
       if (next.length === 1) {
         setShowHint(true)
@@ -164,14 +165,18 @@ export default function Sources() {
               <Text type="secondary" style={{ fontSize: 12 }}>目录路径会被自动打包成 tar.gz（不受压缩开关控制）</Text>
               {(pathsList || []).map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {idx === 0 && showHint && (
+                  {idx === 0 && showHint && !item.isDir && (
                     <span style={{ animation: 'blink-hint 0.8s ease-in-out infinite', color: '#1890ff', fontSize: 12, whiteSpace: 'nowrap' }}>
                       点此切换 <ArrowRightOutlined />
                     </span>
                   )}
+                  {item.isDir ? (
+                    <FolderOutlined style={{ fontSize: 18, color: '#faad14', minWidth: 60, textAlign: 'center' }} />
+                  ) : (
                   <Button size="small" type={item.type === 'sqlite' ? 'primary' : 'default'} icon={item.type === 'sqlite' ? <DatabaseOutlined /> : <FileOutlined />} onClick={() => { togglePathType(idx); setShowHint(false) }} style={{ minWidth: 60 }}>
                     {item.type === 'sqlite' ? '数据库' : '文件'}
                   </Button>
+                  )}
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 13 }}>{item.path}</span>
                   <Button size="small" danger type="text" onClick={() => removePath(idx)}>×</Button>
                 </div>
@@ -195,7 +200,7 @@ export default function Sources() {
           <FileBrowser
             visible={fileBrowserOpen}
             onClose={() => setFileBrowserOpen(false)}
-            onSelect={(p) => { addPath(p); setBrowsePath(p); setFileBrowserOpen(false) }}
+            onSelect={(p, isDir) => { addPath(p, isDir); setBrowsePath(p); setFileBrowserOpen(false) }}
             selectDir={true}
             selectFile={true}
             defaultPath={browsePath}

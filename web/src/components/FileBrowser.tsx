@@ -16,7 +16,7 @@ interface FileEntry {
 interface Props {
   visible: boolean
   onClose: () => void
-  onSelect: (path: string) => void
+  onSelect: (path: string, isDir: boolean) => void
   selectDir?: boolean
   selectFile?: boolean
   defaultPath?: string
@@ -27,7 +27,7 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
   const [entries, setEntries] = useState<FileEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [history, setHistory] = useState<string[]>([])
-  const [selectedFile, setSelectedFile] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<{ path: string; isDir: boolean } | null>(null)
 
   const loadPath = async (path: string) => {
     setLoading(true)
@@ -67,9 +67,9 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
 
   const handleSelect = () => {
     if (selectedFile) {
-      onSelect(selectedFile)
+      onSelect(selectedFile.path, selectedFile.isDir)
     } else {
-      onSelect(currentPath)
+      onSelect(currentPath, true)
     }
     onClose()
   }
@@ -91,9 +91,9 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
           {dirs.map(entry => (
             <div
               key={entry.path}
-              style={{ padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, background: selectedFile === entry.path ? '#e6f7ff' : undefined }}
+              style={{ padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, background: selectedFile?.path === entry.path ? '#e6f7ff' : undefined }}
               onDoubleClick={() => enterDir(entry)}
-              onClick={() => { if (selectDir) setSelectedFile(entry.path) }}
+              onClick={() => { if (selectDir) setSelectedFile({ path: entry.path, isDir: true }) }}
             >
               <FolderOutlined style={{ color: '#faad14' }} />
               <Text>{entry.name}</Text>
@@ -103,8 +103,8 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
           {files.map(entry => (
             <div
               key={entry.path}
-              style={{ padding: '6px 12px', cursor: selectFile ? 'pointer' : undefined, display: 'flex', alignItems: 'center', gap: 8, background: selectedFile === entry.path ? '#e6f7ff' : undefined }}
-              onClick={() => { if (selectFile) setSelectedFile(entry.path) }}
+              style={{ padding: '6px 12px', cursor: selectFile ? 'pointer' : undefined, display: 'flex', alignItems: 'center', gap: 8, background: selectedFile?.path === entry.path ? '#e6f7ff' : undefined }}
+              onClick={() => { if (selectFile) setSelectedFile({ path: entry.path, isDir: false }) }}
             >
               <FileOutlined style={{ color: '#1890ff' }} />
               <Text>{entry.name}</Text>
@@ -117,7 +117,7 @@ export default function FileBrowser({ visible, onClose, onSelect, selectDir, sel
         <Space>
           <Button onClick={onClose}>取消</Button>
           <Button type="primary" onClick={handleSelect} disabled={!selectedFile && currentPath === ''}>
-            {selectedFile ? '选择此文件/目录' : (selectDir ? '选择当前目录' : '选择')}
+            {selectedFile ? '选择此文件/目录' : '选择'}
           </Button>
         </Space>
       </div>
