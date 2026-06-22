@@ -382,7 +382,10 @@ func (e *Executor) uploadToS3(dc DestConfig, files []string) error {
 		remotePath := dc.Path + "/" + filepath.Base(f)
 		remotePath = strings.TrimPrefix(remotePath, "/")
 		log.Printf("[S3上传] %s -> %s/%s (size=%d, sha256=%s)", filepath.Base(f), bucket, remotePath, size, hash)
-		info, err := client.FPutObject(ctx, bucket, remotePath, f, minio.PutObjectOptions{})
+		info, err := client.FPutObject(ctx, bucket, remotePath, f, minio.PutObjectOptions{
+			DisableContentSha256: true,
+			DisableMultipart:     true,
+		})
 		if err != nil {
 			return fmt.Errorf("上传 %s 失败: %w", f, err)
 		}
