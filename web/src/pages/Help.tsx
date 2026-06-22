@@ -46,7 +46,7 @@ export default function Help() {
           <Arrow />
           <FlowStep icon={<CheckCircleOutlined />} title="执行备份" desc="自动/手动触发，上传并清理" color="#52c41a" />
         </div>
-        <Alert type="info" showIcon message="简单理解：备份源告诉系统"备份什么"，存储提供商告诉系统"存到哪"，备份目标告诉系统"存在哪个目录"，备份任务把它们串起来并设定执行时间。" />
+        <Alert type="info" showIcon message={<span>简单理解：备份源告诉系统「备份什么」，存储提供商告诉系统「存到哪」，备份目标告诉系统「存在哪个目录」，备份任务把它们串起来并设定执行时间。</span>} />
       </Card>
 
       {/* 快速开始 */}

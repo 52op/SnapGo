@@ -69,7 +69,7 @@ export default function Jobs() {
     let destIDs: number[] = []
     try { sourceIDs = JSON.parse(record.source_ids || '[]') } catch {}
     try { destIDs = JSON.parse(record.dest_ids || '[]') } catch {}
-    form.setFieldsValue({ name: record.name, cron_expr: record.cron_expr, source_ids: sourceIDs, dest_ids: destIDs, encrypt_key: record.encrypt_key, notify_webhook: record.notify_webhook, enabled: !!record.enabled })
+    form.setFieldsValue({ name: record.name, cron_expr: record.cron_expr, source_ids: sourceIDs, dest_ids: destIDs, encrypt_key: record.encrypt_key, notify_webhook: record.notify_webhook, notify_email: !!record.notify_email, enabled: !!record.enabled })
     setModalOpen(true)
   }
 
@@ -128,6 +128,9 @@ export default function Jobs() {
           </Form.Item>
           <Form.Item name="notify_webhook" label="通知 Webhook(可选)">
             <Input placeholder="https://hooks.example.com/backup-notify" />
+          </Form.Item>
+          <Form.Item name="notify_email" label="备份成功邮件通知" help="需先在系统设置中配置 Formail API Key 和通知邮箱">
+            <Switch />
           </Form.Item>
           <Form.Item name="enabled" label="启用" valuePropName="checked"><Switch /></Form.Item>
         </Form>

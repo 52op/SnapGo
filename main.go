@@ -132,6 +132,7 @@ func main() {
 	ph := &handlers.ProviderHandler{DB: db, Executor: exec}
 	lh := &handlers.LogHandler{DB: db}
 	dash := &handlers.DashboardHandler{DB: db}
+	sh2 := &handlers.SettingsHandler{DB: db}
 
 	protected.GET("/dashboard/stats", dash.Stats)
 
@@ -166,6 +167,9 @@ func main() {
 	protected.GET("/logs", lh.List)
 	protected.GET("/logs/:id", lh.Get)
 	protected.DELETE("/logs/:id", lh.Delete)
+
+	protected.GET("/settings", sh2.Get)
+	protected.PUT("/settings", sh2.Update)
 
 	sched.Start()
 

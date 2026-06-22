@@ -9,6 +9,7 @@ import {
   LogoutOutlined,
   CloudServerOutlined,
   QuestionCircleOutlined,
+  SettingOutlined,
 } from '@ant-design/icons'
 import { setToken, getMe } from '../api'
 import { useEffect, useState } from 'react'
@@ -32,6 +33,7 @@ export default function Layout() {
     { key: '/destinations', icon: <CloudUploadOutlined />, label: '备份目标' },
     { key: '/jobs', icon: <ScheduleOutlined />, label: '备份任务' },
     { key: '/logs', icon: <FileTextOutlined />, label: '执行日志' },
+    { key: '/settings', icon: <SettingOutlined />, label: '系统设置' },
     { key: '/help', icon: <QuestionCircleOutlined />, label: '使用说明' },
   ]
 

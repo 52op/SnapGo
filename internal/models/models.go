@@ -63,11 +63,20 @@ type Job struct {
 	DestIDs       string     `json:"dest_ids" gorm:"type:text"`
 	EncryptKey    string     `json:"encrypt_key" gorm:"type:text"`
 	NotifyWebhook string     `json:"notify_webhook"`
+	NotifyEmail   bool       `json:"notify_email" gorm:"default:false"`
 	Enabled       bool       `json:"enabled" gorm:"default:true"`
 	LastRunAt     *time.Time `json:"last_run_at"`
 	LastStatus    string     `json:"last_status" gorm:"default:''"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+}
+
+type SystemSetting struct {
+	ID        int64     `json:"id" gorm:"primaryKey"`
+	Key       string    `json:"key" gorm:"uniqueIndex;not null"`
+	Value     string    `json:"value" gorm:"type:text"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type JobLog struct {
@@ -87,7 +96,7 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := db.AutoMigrate(&User{}, &Source{}, &Destination{}, &StorageProvider{}, &Job{}, &JobLog{}); err != nil {
+	if err := db.AutoMigrate(&User{}, &Source{}, &Destination{}, &StorageProvider{}, &Job{}, &JobLog{}, &SystemSetting{}); err != nil {
 		return nil, err
 	}
 	return db, nil

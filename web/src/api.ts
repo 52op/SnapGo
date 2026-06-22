@@ -168,3 +168,11 @@ export function getLog(id: number) {
 export function deleteLog(id: number) {
   return request(`/logs/${id}`, { method: 'DELETE' })
 }
+
+export function getSettings() {
+  return request('/settings').then(r => r.data)
+}
+
+export function updateSettings(data: Record<string, string>) {
+  return request('/settings', { method: 'PUT', body: JSON.stringify(data) })
+}

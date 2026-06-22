@@ -23,6 +23,7 @@ type jobForm struct {
 	DestIDs       []int64 `json:"dest_ids"`
 	EncryptKey    string  `json:"encrypt_key"`
 	NotifyWebhook string  `json:"notify_webhook"`
+	NotifyEmail   bool    `json:"notify_email"`
 	Enabled       bool    `json:"enabled"`
 }
 
@@ -34,6 +35,7 @@ type jobRow struct {
 	DestIDs       string
 	EncryptKey    string
 	NotifyWebhook string
+	NotifyEmail   bool
 	Enabled       bool
 	LastRunAt     *time.Time
 	LastStatus    string
@@ -101,6 +103,7 @@ func (h *JobHandler) Create(c *gin.Context) {
 		"dest_ids":       idsToJSON(form.DestIDs),
 		"encrypt_key":    form.EncryptKey,
 		"notify_webhook": form.NotifyWebhook,
+		"notify_email":   form.NotifyEmail,
 		"enabled":        form.Enabled,
 	})
 	if result.Error != nil {
@@ -124,6 +127,7 @@ func (h *JobHandler) Update(c *gin.Context) {
 		"dest_ids":       idsToJSON(form.DestIDs),
 		"encrypt_key":    form.EncryptKey,
 		"notify_webhook": form.NotifyWebhook,
+		"notify_email":   form.NotifyEmail,
 		"enabled":        form.Enabled,
 	}
 	result := h.DB.Table("jobs").Where("id = ?", id).Updates(updates)

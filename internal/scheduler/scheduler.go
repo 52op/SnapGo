@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"snapgo/internal/executor"
@@ -52,6 +53,7 @@ type jobRow struct {
 	DestIDs       string
 	EncryptKey    string
 	NotifyWebhook string
+	NotifyEmail   bool
 	Enabled       bool
 	LastRunAt     *time.Time
 	LastStatus    string
@@ -224,6 +226,10 @@ func (s *Scheduler) runJob(job jobRow) {
 	if job.NotifyWebhook != "" {
 		notifyWebhook(job, updates)
 	}
+
+	if job.NotifyEmail {
+		go notifyEmail(s.db, job, updates)
+	}
 }
 
 func notifyWebhook(job jobRow, updates map[string]interface{}) {
@@ -234,4 +240,43 @@ func notifyWebhook(job jobRow, updates map[string]interface{}) {
 	msg := fmt.Sprintf("备份任务 [%s] 执行%s", job.Name, status)
 	notifyURL := job.NotifyWebhook + "?msg=" + msg
 	http.Get(notifyURL)
+}
+
+func notifyEmail(db *gorm.DB, job jobRow, updates map[string]interface{}) {
+	var apiKey, formailURL, siteTitle, notifyEmail string
+	db.Table("system_settings").Where("`key` = ?", "formail_apikey").Select("value").Row().Scan(&apiKey)
+	db.Table("system_settings").Where("`key` = ?", "formail_url").Select("value").Row().Scan(&formailURL)
+	db.Table("system_settings").Where("`key` = ?", "site_title").Select("value").Row().Scan(&siteTitle)
+	db.Table("system_settings").Where("`key` = ?", "notify_email").Select("value").Row().Scan(&notifyEmail)
+
+	if apiKey == "" || formailURL == "" || notifyEmail == "" {
+		return
+	}
+	if siteTitle == "" {
+		siteTitle = "SnapGo"
+	}
+
+	status := "成功"
+	if s, ok := updates["status"].(string); ok && s == "failed" {
+		status = "失败"
+	}
+
+	subject := fmt.Sprintf("[%s] 备份任务 [%s] 执行%s", siteTitle, job.Name, status)
+	text := fmt.Sprintf("备份任务 [%s] 已于 %s 执行%s", job.Name, time.Now().Format("2006-01-02 15:04:05"), status)
+
+	body := fmt.Sprintf(`{"to":"%s","subject":"%s","text":"%s"}`, notifyEmail, subject, text)
+	apiURL := strings.TrimRight(formailURL, "/") + "/v1/emails"
+	req, err := http.NewRequest("POST", apiURL, strings.NewReader(body))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
 }
