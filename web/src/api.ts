@@ -184,3 +184,7 @@ export function updateSettings(data: Record<string, string>) {
 export function testFormail(data: { formail_url: string; apikey: string; email: string }) {
   return request('/settings/test-formail', { method: 'POST', body: JSON.stringify(data) })
 }
+
+export function testMySQLConnection(dsn: string) {
+  return request('/sources/test-mysql', { method: 'POST', body: JSON.stringify({ dsn }) })
+}

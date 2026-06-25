@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/jlaffaye/ftp"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -152,6 +153,39 @@ func (e *Executor) Run(jobName string, sources []SourceItem, dests []DestItem, e
 	outputBuf.WriteString(fmt.Sprintf("[%s] 开始备份任务: %s\n", time.Now().Format(time.RFC3339), jobName))
 
 	for _, src := range sources {
+		if src.SourceType == "mysql" {
+			outputBuf.WriteString(fmt.Sprintf("处理备份源: %s (MySQL)\n", src.Name))
+			mysqlDir := filepath.Join(workDir, src.Name+"_mysql")
+			os.MkdirAll(mysqlDir, 0755)
+			files, size, err := backupMySQL(src.Path, mysqlDir)
+			if err != nil {
+				outputBuf.WriteString(fmt.Sprintf("  MySQL 备份失败: %v\n", err))
+				continue
+			}
+			totalFiles += files
+			totalBytes += size
+			outputBuf.WriteString(fmt.Sprintf("  MySQL 备份完成: %d 文件, %d 字节\n", files, size))
+			if src.Compress {
+				tarPath := filepath.Join(workDir, src.Name+".tar.gz")
+				if err := tarCompress(mysqlDir, tarPath); err != nil {
+					outputBuf.WriteString(fmt.Sprintf("  压缩失败: %v\n", err))
+					continue
+				}
+				if vErr := validateTarGz(tarPath); vErr != nil {
+					outputBuf.WriteString(fmt.Sprintf("  压缩包校验失败: %v\n", vErr))
+					continue
+				}
+				os.RemoveAll(mysqlDir)
+				os.Rename(tarPath, filepath.Join(backupDir, src.Name+".tar.gz"))
+				outputBuf.WriteString(fmt.Sprintf("  压缩完成\n"))
+			} else {
+				for _, f := range listFiles(mysqlDir) {
+					os.Rename(f, filepath.Join(backupDir, filepath.Base(f)))
+				}
+				os.RemoveAll(mysqlDir)
+			}
+			continue
+		}
 		entries := src.GetPathEntries()
 		if len(entries) == 0 {
 			outputBuf.WriteString(fmt.Sprintf("  跳过 %s: 未指定路径\n", src.Name))
@@ -1188,4 +1222,155 @@ func fileSHA256(path string) (string, int64, error) {
 		return "", 0, err
 	}
 	return fmt.Sprintf("%x", h.Sum(nil)), n, nil
+}
+
+func escapeSQLString(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "'", "\\'")
+	s = strings.ReplaceAll(s, "\"", "\\\"")
+	s = strings.ReplaceAll(s, "\n", "\\n")
+	s = strings.ReplaceAll(s, "\r", "\\r")
+	return s
+}
+
+func backupMySQL(dsn, dstDir string) (int, int64, error) {
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return 0, 0, fmt.Errorf("连接 MySQL 失败: %w", err)
+	}
+	defer db.Close()
+	if err := db.Ping(); err != nil {
+		return 0, 0, fmt.Errorf("Ping MySQL 失败: %w", err)
+	}
+
+	cfg, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		return 0, 0, fmt.Errorf("解析 DSN 失败: %w", err)
+	}
+
+	outPath := filepath.Join(dstDir, cfg.DBName+".sql")
+	f, err := os.Create(outPath)
+	if err != nil {
+		return 0, 0, fmt.Errorf("创建备份文件失败: %w", err)
+	}
+	defer f.Close()
+
+	fmt.Fprintf(f, "-- SnapGo MySQL Backup\n")
+	fmt.Fprintf(f, "-- Host: %s\n", cfg.Addr)
+	fmt.Fprintf(f, "-- Database: %s\n", cfg.DBName)
+	fmt.Fprintf(f, "-- Generated: %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
+
+	rows, err := db.Query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME")
+	if err != nil {
+		return 0, 0, fmt.Errorf("查询表列表失败: %w", err)
+	}
+	defer rows.Close()
+
+	var tables []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return 0, 0, fmt.Errorf("扫描表名失败: %w", err)
+		}
+		tables = append(tables, name)
+	}
+	if len(tables) == 0 {
+		return 0, 0, fmt.Errorf("数据库 %s 中没有表", cfg.DBName)
+	}
+
+	fmt.Fprintf(f, "SET autocommit=0;\n")
+	fmt.Fprintf(f, "SET unique_checks=0;\n")
+	fmt.Fprintf(f, "SET foreign_key_checks=0;\n")
+	fmt.Fprintf(f, "BEGIN;\n")
+
+	totalSize := int64(0)
+
+	for _, tableName := range tables {
+		var createSQL string
+		row := db.QueryRow(fmt.Sprintf("SHOW CREATE TABLE `%s`", tableName))
+		if err := row.Scan(&tableName, &createSQL); err != nil {
+			return 0, 0, fmt.Errorf("获取表 %s 的 CREATE TABLE 失败: %w", tableName, err)
+		}
+
+		fmt.Fprintf(f, "\n-- Table: %s\n", tableName)
+		fmt.Fprintf(f, "DROP TABLE IF EXISTS `%s`;\n", tableName)
+		fmt.Fprintf(f, "%s;\n", createSQL)
+
+		dataRows, err := db.Query(fmt.Sprintf("SELECT * FROM `%s`", tableName))
+		if err != nil {
+			return 0, 0, fmt.Errorf("查询表 %s 数据失败: %w", tableName, err)
+		}
+
+		cols, err := dataRows.Columns()
+		if err != nil {
+			dataRows.Close()
+			return 0, 0, fmt.Errorf("获取表 %s 的列失败: %w", tableName, err)
+		}
+
+		values := make([]interface{}, len(cols))
+		scanArgs := make([]interface{}, len(cols))
+		for i := range values {
+			scanArgs[i] = &values[i]
+		}
+
+		rowCount := 0
+		batchSize := 100
+		for dataRows.Next() {
+			if err := dataRows.Scan(scanArgs...); err != nil {
+				dataRows.Close()
+				return 0, 0, fmt.Errorf("扫描表 %s 数据失败: %w", tableName, err)
+			}
+
+			if rowCount%batchSize == 0 {
+				if rowCount > 0 {
+					fmt.Fprintf(f, ";\n")
+				}
+				fmt.Fprintf(f, "INSERT INTO `%s` VALUES ", tableName)
+			} else {
+				fmt.Fprintf(f, ",")
+			}
+
+			fmt.Fprintf(f, "(")
+			for i, v := range values {
+				if i > 0 {
+					fmt.Fprintf(f, ",")
+				}
+				if v == nil {
+					fmt.Fprintf(f, "NULL")
+				} else {
+					switch val := v.(type) {
+					case int64, float64, bool:
+						fmt.Fprintf(f, "%v", val)
+					case []byte:
+						fmt.Fprintf(f, "'%s'", escapeSQLString(string(val)))
+					case string:
+						fmt.Fprintf(f, "'%s'", escapeSQLString(val))
+					default:
+						fmt.Fprintf(f, "'%s'", escapeSQLString(fmt.Sprintf("%v", val)))
+					}
+				}
+			}
+			fmt.Fprintf(f, ")")
+			rowCount++
+		}
+		dataRows.Close()
+		if rowCount > 0 {
+			fmt.Fprintf(f, ";\n")
+		}
+	}
+
+	fmt.Fprintf(f, "\nCOMMIT;\n")
+	fmt.Fprintf(f, "SET autocommit=1;\n")
+	fmt.Fprintf(f, "SET unique_checks=1;\n")
+	fmt.Fprintf(f, "SET foreign_key_checks=1;\n")
+	fmt.Fprintf(f, "-- Done\n")
+
+	f.Close()
+	fi, err := os.Stat(outPath)
+	if err != nil {
+		return 0, 0, fmt.Errorf("获取备份文件大小失败: %w", err)
+	}
+	totalSize = fi.Size()
+
+	return 1, totalSize, nil
 }

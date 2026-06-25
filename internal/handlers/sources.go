@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
 	"snapgo/internal/utils"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -176,6 +178,29 @@ type pathEntry struct {
 	Path  string `json:"path"`
 	Type  string `json:"type"`
 	IsDir bool   `json:"isDir"`
+}
+
+type testMySQLForm struct {
+	DSN string `json:"dsn" binding:"required"`
+}
+
+func (h *SourceHandler) TestMySQL(c *gin.Context) {
+	var form testMySQLForm
+	if err := c.ShouldBindJSON(&form); err != nil {
+		utils.Fail(c, 400, "参数错误: "+err.Error())
+		return
+	}
+	db, err := sql.Open("mysql", form.DSN)
+	if err != nil {
+		utils.Fail(c, 400, "连接失败: "+err.Error())
+		return
+	}
+	defer db.Close()
+	if err := db.Ping(); err != nil {
+		utils.Fail(c, 400, "Ping 失败: "+err.Error())
+		return
+	}
+	utils.OK(c, gin.H{"message": "连接成功"})
 }
 
 func enrichPathIsDir(pathsJSON string) string {

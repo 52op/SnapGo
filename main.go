@@ -143,6 +143,7 @@ func main() {
 	protected.DELETE("/sources/:id", sh.Delete)
 	protected.GET("/browse", sh.Browse)
 	protected.GET("/check-path", sh.CheckPath)
+	protected.POST("/sources/test-mysql", sh.TestMySQL)
 
 	protected.GET("/destinations", dh.List)
 	protected.GET("/destinations/:id", dh.Get)
